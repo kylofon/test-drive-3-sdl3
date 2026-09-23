@@ -1,7 +1,7 @@
 # Reverse-engineering guide for the SDL3 port
 
-Shared conventions for everyone writing port specs. Target: **TDIII.EXE**, VGA path (graphics mode
-14h). EGA, Tandy and the MT-32 / Tandy / Game Blaster sound drivers are parked (PLAN.md, TODO).
+Shared conventions for everyone writing port specs. Target: **TDIII.EXE**, VGA path (graphics
+library mode 13h, see platform.md). EGA, Tandy and the MT-32 / Tandy / Game Blaster sound drivers are parked (PLAN.md, TODO).
 
 TD3 has a new engine (Accolade in-house, not DSI). Unlike TD2, it shares no game or assembly-library
 code with TD1/TD2: only the Microsoft C runtime matches (`port/tdiii_td2_matches.csv`). The TD1/TD2
@@ -47,7 +47,7 @@ repos (`../TestDrive1987`, `../TestDrive2`) are useful for workflow and port ske
 | `0977` | 5 K | One 5 KB function `0977:0008`, run by `frame_update` unless paused/replay: no drawing, most likely the car simulation |
 | `0ab4` | 6 K | Small helpers `0ab4:000a`–`01f0` (`0ab4:006a` has no direct callers) + `0ab4:1220` (per frame, from `frame_update`) |
 | `0c1c` | 8 K | Platform: timer (PIT 40h/43h, PIC 20h), keyboard ISR `0c1c:0e98` (INT 9), config (`TD3.CFG`), DOS file calls; ASCII key map at `0c1c:0cae` |
-| `0e12` | 36 K | The engine (170 functions): key dispatch `0e12:0080`, 3D world, driving. Also lookup tables (`0e12:0ff2`–`22fe`, `267e`, `7004`) |
+| `0e12` | 36 K | The engine (170 functions): held-controls poll `0e12:0080`, key dispatch `0e12:0084`, 3D world, driving. Also lookup tables (`0e12:0ff2`–`22fe`, `267e`, `7004`) |
 | `16cf`–`1937` | 9 K | Graphics library, one module per primitive, each dispatching on the mode (see below). `16e6`–`16f5` = mouse (INT 33h), `16ff` = BIOS time (INT 1Ah), `1905:000b` = `gfx_set_mode` |
 | `1940` | 6 K | MS C 5.1 runtime (entry `1940:0018` `_astart`) |
 | `1ace`, `1bd7`, `1bd8` | 4 K | Sound/music driver: device routine tables, MIDI-style event dispatch |
@@ -56,9 +56,11 @@ repos (`../TestDrive1987`, `../TestDrive2`) are useful for workflow and port ske
 
 Library routines index a 21-entry table (one per mode 00h–14h) at the current mode:
 `lea bx,[table] / add bx,[DS:BD44] / jmp cs:[bx]`. `DS:BD44` = mode × 2, set by `gfx_set_mode`.
-Modes used by the game: **14h = VGA 320×200×256 unchained** (planar "mode Y": sequencer chain-4 off,
-CRTC byte mode, so page flipping is possible), 13h = BIOS 320×200×256, 0Dh/0Eh = EGA, 08h–0Ah = Tandy,
-0Bh/0Ch = Hercules (the exe's setup strings list only VGA, EGA and Tandy). The port implements the 14h path only.
+Modes: **13h = BIOS 320×200×256, the VGA build's only mode** (TD3.CFG video 0 → table DS:00EA
+`13 0D 09` → DS:E338; `gfx_set_mode` is called only by config_load and the quit paths). 0Dh = EGA,
+09h = Tandy (parked). 14h = unchained 320×200×256 exists in every primitive but is never selected
+(an earlier version of this guide wrongly called it the game mode). Page 0 = A000h (visible), page 1 =
+a 64000-byte RAM page; `DS:90CC[DS:009A]` picks the draw target. The port implements the 13h path only.
 
 ### Code reached through pointer tables
 
@@ -82,9 +84,16 @@ no DS load), `1ace:0eab`, `192e:0063`, `1940:188d`, `173c:01ca`–`02be` (a modu
   frame started.
 * Timer: `timer_install` (`0c1c:109f`) sets PIT channel 0 to divisor 2000h = **145.6 Hz**; so the
   game runs at most ~29 fps. `timer_restore` (`0c1c:10cf`) puts back 18.2 Hz.
-* The engine in `0e12` does no port I/O and doesn't call the graphics library from its draw trees:
-  it most likely renders into a RAM buffer that the library blitters (`17be`, `17eb`, `1818`, `185f`)
-  copy to VGA. To be confirmed by the render spec.
+* The engine in `0e12` does no port I/O: it draws into the linear pages (page 0 = VGA memory,
+  page 1 = RAM); each race frame waits for vertical retrace before the 3D view is copied (platform.md,
+  render3d.md).
+
+## Specs (phase 3, done 2026-09-23)
+
+`port/spec/game_flow.md`, `simulation.md`, `render3d.md`, `hud.md`, `platform.md`, `sound.md`, each
+with `<spec>_symbols.csv`; merged by `tools/merge_symbols.py` (owner by segment range, otherwise
+priority render3d > simulation > platform > sound > game_flow > hud > format docs > seed; other names
+kept in `other_names`). Phase 2 format documents are in `port/formats/`, errata in `FORMATS.md`.
 
 ## Subsystem split (phase 3 specs)
 
@@ -97,7 +106,7 @@ called from `frame_update` / `frame_draw`.
 | `simulation` | `0977:0008`, `0ab4:1220` tree, `0e12` trees of `095a`, `23df`, `6e92`, `70cd`, `0b1d`; key handlers (`0e12:0080` tables) | car physics, gears, damage, steering/throttle input, road following, traffic, police, radar detector, checkpoints, time and fuel, replay (`DS:948B`?) |
 | `render3d` | `0e12` trees of `34c3`, `323e`, `6421`, `46c0`, `4c51`, `7c21` + remaining `0e12` functions not reached above; lookup tables in `0e12` | camera, transform/projection, clipping, polygon fill, sorting, sky/horizon, objects and cars, rear-view mirror, the frame buffer and how it reaches VGA |
 | `hud` | `0792:0414`, `0792:0922`–`1c66` per-frame parts | dashboard, gauges, map/compass, messages drawn over the 3D view |
-| `platform` | `0c1c`, `16cf`–`1937` (VGA mode 14h paths only), `0ab4:000a`–`01f0`, `1940` (identify only) | timer, keyboard ISR, joystick/mouse, config, file and memory helpers, unpacker (`.LZ`?), graphics library primitives and blitters, palette |
+| `platform` | `0c1c`, `16cf`–`1937` (VGA mode 13h paths only), `0ab4:000a`–`01f0`, `1940` (identify only) | timer, keyboard ISR, joystick/mouse, config, file and memory helpers, unpacker (`.LZ`?), graphics library primitives and blitters, palette |
 | `sound` | `1ace`, `1bd7`, `1bd8`; `INSTR.DAT` | music/effects driver, AdLib/SB device routines (others: note only), music data format |
 
 If a function clearly belongs to another subsystem, list it with a "see `<spec>`" note instead of

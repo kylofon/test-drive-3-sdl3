@@ -1,10 +1,104 @@
-func 0792:0d2e: objects=stage_load_objects; world=stage_load
-func 0e12:261c: objects=build_colour_remap; world=colour_code_map_build
-func 0e12:3a7c: objects=draw_face_dispatch; world=face_under_car
-func 0e12:5466: objects=traffic_follow_path; world=vehicle_follow_lane
-func 0e12:5aa4: objects=path_tile_lookup; world=lane_list_for_cell
-func 0e12:70cd: objects=world_build_visible; world=world_cells_collect
-func 0e12:72f8: objects=obj_emit_static; world=model_place
-func 0e12:7487: objects=obj_emit_faces; world=model_faces
-func 0e12:75c1: objects=obj_transform_verts; world=model_vertices
-func 0e12:7653: objects=vert_rotate; world=vertex_rotate
+func 0792:0d2e: game_flow=stage_load_objects; objects=stage_load_objects; world=stage_load
+func 0c1c:0733: hud=text_colours; platform=text_set_colours
+func 0c1c:1759: hud=pic_draw_view; platform=rle_draw_viewbuf
+func 0e12:0080: seed=key_dispatch; simulation=controls_poll_far
+func 0e12:0084: hud=key_code_dispatch; simulation=key_dispatch
+func 0e12:0133: hud=key_wheel_centering; simulation=key_wheel_centring
+func 0e12:0269: hud=key_lever_display; simulation=key_knob_toggle
+func 0e12:04f1: hud=replay_panel_clear; simulation=panel_erase
+func 0e12:0630: simulation=key_radio; sound=radio_next
+func 0e12:0b1d: hud=topbar_update; simulation=race_clock_hud
+func 0e12:0db4: hud=radar_draw; simulation=radar_detector
+func 0e12:22fe: render3d=atan2_xz; simulation=vec_angle
+func 0e12:261c: objects=build_colour_remap; render3d=build_colour_remap; world=colour_code_map_build
+func 0e12:28eb: objects=draw_sprite_child; render3d=sprite_draw
+func 0e12:34c3: render3d=scene_prepare; simulation=scene_update
+func 0e12:34f1: render3d=near_face_hits; simulation=near_face_collisions
+func 0e12:3a7c: objects=draw_face_dispatch; render3d=draw_face_dispatch; simulation=draw_face_dispatch; world=face_under_car
+func 0e12:4590: render3d=plate_fold_down; simulation=barrier_knockdown
+func 0e12:4631: render3d=knockover_hit; simulation=object_face_hit
+func 0e12:4d60: render3d=objects_update; simulation=moving_objects_update
+func 0e12:4fc7: render3d=parked_vehicles_emit; simulation=obj_emit_parked
+func 0e12:509b: render3d=moving_objects_update; simulation=traffic_update
+func 0e12:5466: objects=traffic_follow_path; simulation=vehicle_follow_lane; world=vehicle_follow_lane
+func 0e12:5aa4: objects=path_tile_lookup; simulation=lane_list_for_cell; world=lane_list_for_cell
+func 0e12:61d2: render3d=police_pursuit_clear; simulation=police_end_chases
+func 0e12:61fd: render3d=opponent_times_finalize; simulation=opponents_final_times
+func 0e12:624a: render3d=opponent_time_estimate; simulation=opponent_final_time
+func 0e12:6316: render3d=plane_height_at_camera; simulation=tri_height_at_viewpoint
+func 0e12:6666: render3d=slope_to_roll_code; simulation=slope_to_tilt_code
+func 0e12:66ad: objects=draw_point; render3d=point_draw
+func 0e12:70b8: render3d=obj_ranges_clear; simulation=obj_face_ranges_clear
+func 0e12:70cd: objects=world_build_visible; render3d=world_build_visible; world=world_cells_collect
+func 0e12:72f8: objects=obj_emit_static; render3d=model_place; world=model_place
+func 0e12:7487: objects=obj_emit_faces; render3d=model_emit_faces; world=model_faces
+func 0e12:75c1: objects=obj_transform_verts; render3d=model_emit_vertices; world=model_vertices
+func 0e12:7653: objects=vert_rotate; render3d=vertex_rotate; world=vertex_rotate
+func 16d9:0002: hud=gfx_lineto; platform=gfx_line_to
+func 16fb:0008: hud=gfx_moveto; platform=gfx_move_to
+func 170e:0002: hud=gfx_show_page; platform=gfx_set_copy_page
+func 1714:000e: hud=gfx_set_page; platform=gfx_set_draw_page
+func 173c:0005: hud=gfx_plot; platform=gfx_put_pixel
+func 185f:000b: hud=gfx_draw_mask; platform=gfx_draw_bitmap
+func 18b3:0004: hud=gfx_read_mask; platform=gfx_read_bitmap
+func 192e:0005: hud=gfx_fill_clipped; platform=gfx_fill_rect_clipped
+global DS:0084: game_flow=shared_loaded; sound=shared_data_loaded
+global DS:008C: game_flow=key_hit; platform=skip_flag
+global DS:0092: game_flow=joystick_on; platform=joy_enabled; simulation=joystick_on
+global DS:0094: game_flow=joystick_analog; simulation=joy_analog
+global DS:0095: game_flow=auto_shift; simulation=auto_gearbox
+global DS:009A: game_flow=active_page; hud=cur_page; platform=page_cur
+global DS:009F: game_flow=dissolve_skippable; platform=skip_enabled
+global DS:00A0: platform=tick_count; seed=timer_ticks
+global DS:00BC: game_flow=joy_x_min; platform=joy_x_min; simulation=joy_xmin
+global DS:00BE: platform=joy_x_ctr; simulation=joy_xcentre
+global DS:00C0: platform=joy_x_max; simulation=joy_xmax
+global DS:00D2: game_flow=rand_seed; simulation=rand_lo
+global DS:00EA: game_flow=video_mode_table; platform=cfg_video_modes
+global DS:00EE: game_flow=video_default_choice; platform=cfg_default_video
+global DS:0B6A: game_flow=pal_buf; platform=palette
+global DS:16DA: game_flow=msg_table; hud=message_table
+global DS:90DC: game_flow=view_rows_param; platform=view_top_row
+global DS:90F0: game_flow=pal_offset; hud=colour_offset; platform=colour_offset
+global DS:915B: game_flow=last_key; platform=kbd_key
+global DS:915C: game_flow=keys_held; platform=kbd_dirs; simulation=kbd_bits
+global DS:915D: platform=timer_chain_cnt; sound=isr_chain_count
+global DS:9460: hud=polar_x; render3d=dxl2; simulation=sin_out
+global DS:9462: hud=polar_y; render3d=dxr2; simulation=cos_out
+global DS:947B: game_flow=joy_dir; simulation=joy_bits
+global DS:9486: simulation=damage; sound=damage_flags
+global DS:9488: game_flow=pending_msg; hud=pending_message; simulation=pending_msg
+global DS:948B: game_flow=external_view; hud=chase_view; simulation=ext_view; sound=replay_active
+global DS:948C: game_flow=sim_frozen; simulation=frozen
+global DS:94B2: game_flow=replay_active; hud=replay_playing; simulation=replay_state
+global DS:95CC: simulation=shuttle_period; world=traffic_turn_delay
+global DS:B6DA: hud=wheel_centering; simulation=wheel_centring
+global DS:B6DB: hud=lever_always; simulation=knob_hidden
+global DS:B6DC: hud=half_window; render3d=half_window; simulation=window_half
+global DS:B6EA: hud=debug_mode; simulation=debug_keys
+global DS:B70A: game_flow=clock_frac; hud=clock_frac; simulation=clock_sub
+global DS:B78D: game_flow=crashed; hud=crash_active; simulation=crashed
+global DS:BA83: render3d=roof_height; simulation=overhead_y
+global DS:BA85: render3d=ground_height; simulation=ground_y
+global DS:BA9A: render3d=face_type; simulation=face_type_x8
+global DS:BA9B: render3d=surface_under_car; simulation=surface; world=surface_under_car
+global DS:BCD4: render3d=gate_slot1; simulation=gate_obj
+global DS:BD39: game_flow=frame_count; render3d=frame_counter; simulation=frame_count
+global DS:BD3B: game_flow=crash_water; hud=crash_in_water; simulation=crash_water
+global DS:BD3C: game_flow=water_shake; hud=water_pending; simulation=water_anim
+global DS:BD4B: hud=gfx_cur_x; platform=gfx_pen_x
+global DS:BD4D: hud=gfx_cur_y; platform=gfx_pen_y
+global DS:CC50: game_flow=prev_surface; simulation=last_surface
+global DS:CC52: game_flow=look_rect_dirty; hud=lever_shown
+global DS:CC5C: game_flow=lz_buf; hud=pic_file_buf; render3d=view_block
+global DS:CC92: game_flow=external_panel_on; hud=panel_shown
+global DS:CE98: game_flow=chase_pic; hud=pic_chase
+global DS:E540: game_flow=weather_dir; simulation=zone_dir
+global DS:E550: game_flow=water_pic; hud=pic_water
+global DS:E55A: game_flow=broke_pic; hud=pic_broke
+global DS:E561: game_flow=car_reset_pending; simulation=need_place
+global DS:E5B8: game_flow=face_buf; render3d=face_block
+global DS:E5BC: game_flow=compass_pic; hud=pic_compass
+global DS:E776: game_flow=adapter_type; platform=adapter
+global DS:E7DC: game_flow=dos_block; platform=lzw_dict_ptr; render3d=mirror_block
+global DS:E862: game_flow=orig_video_mode; platform=bios_mode_at_start

@@ -1,0 +1,321 @@
+kind,address,name,type,notes
+func,0e12:03d4,detail_apply,near,"view window B6DE by detail, sprite seed mask, traffic thinning by skill [verified]"
+func,0e12:0edb,random_damage,"far, no args",1/8: sfx 0Ch + 9486 |= 4<<b; 1/64: message 2Eh + 9486 |= 1<<b [verified (code)]
+func,0e12:0f31,crash_start,near void(),"once: B78D=1, music_stop, shake counter 947C=0x10, BAAB = object whose id range holds BAA9 [verified]"
+func,0e12:0fa1,screen_shake_step,far void(),"if 947C: 947C--, unless E776==0x13 set CRTC display start from table 0e12:0F81[947C] [verified]"
+func,0e12:0fd6,bounce_back,"near, keeps BX,CX","947C=4, copy car state DS:1282[6] → DS:125E[6] [verified (code), likely (meaning)]"
+func,0e12:22fe,atan2_xz,"CX=x, DX=z (s16) → AX=angle; clobbers BP,DI,CX,DX","angle = atan2(−z, x), 10000h/turn, table 0e12:12F6 [verified]"
+func,0e12:234b,polar,"far cdecl (angle, r) → 9460=r·sin, 9462=r·cos",512-step sine table 0e12:0FF2 [verified]
+func,0e12:2465,life_reset,far,"optional restart pos (B9CB..), colour remap, 03d4, reset ~40 race vars [verified]"
+func,0e12:2537,frame_buffers_init,far void(),"90D0 = normalised seg of far CC5C (7810h bytes), 90D2 = seg E7DE+1 (DOS block of 300h paragraphs) [verified]"
+func,0e12:255e,leg_state_reset,far,"seed (10–12 bits set) → BA56/B6ED, 25f4, 2465, zero leg state, car pos = sprite 0 [verified]"
+func,0e12:25f4,view_row_tables_init,near void(),"B8D3[r]=r·140h (r<60h), B993[r]=r·58h (r<13h) [verified]"
+func,0e12:261c,build_colour_remap,far void(),"32-byte colour-code remap at far E5B0 (day/night, rain, snow); settled name (alias colour_code_map_build) [verified]"
+func,0e12:276e,sprite_pixels_remap,"in DI = first pixel byte, DX = end, SI = remap table (all DS-relative, ES = DS); clobbers AX, BX","if (u8)DS:E338 != 13h: every byte ≥ 10h in [DI, DX) becomes table[b-10h] [verified (code); purpose (non-VGA) likely]"
+func,0e12:2789,sprites_prescale,"far, no args; saves SI DI ES",builds the pre-scaled sprite cache in the far buffer E53C from the sprite file at DS:2500; fatal message 1Ah on overflow [verified]
+func,0e12:2810,sprite_prescale_one,"near; in AL = sprite id, DI = cache write offset, ES = cache seg; out DI = new write offset",writes the sprite's step directory and its scaled copies according to 95E1[id] & 7 [verified]
+func,0e12:289a,sprite_scale_setup,"near; in B9D6/B9D7 = scale, B9D8 = id, DI, ES; out DI","loads the masks, writes the copy header, dispatches to shrink/grow [verified]"
+func,0e12:28eb,sprite_draw,"near; in BX = k (visible index), B9D5, B9D6, B9D8; saves BX ES","picks the cached copy, converts x, calls the main or mirror blitter [verified]"
+func,0e12:2999,sprite_blit_mirror,as 2b74,"same for the rear-view mirror (88 px wide, 19 rows, half vertical scale) [verified]"
+func,0e12:2a9e,sprite_rows_mirror,as 2c7c,"row copy into seg 90D2 (stride 58h, end 688h) [verified]"
+func,0e12:2b74,sprite_blit_main,"near; in BX = k, SI = copy pixel data, ES = cache seg, 947E = centre x px, 9480/9481/B9DB/B9E1","horizontal clip (0..319), vertical projection with roll, top clip, then 2c7c [verified]"
+func,0e12:2c7c,sprite_rows_main,"near; in AL = top row (≥ 0), SI, B9D4, B9DE, B9DF",transparent row copy into seg 90D0 (stride 140h) until BA93 or H rows [verified]
+func,0e12:2d54,sprite_scale_rows,"near; in SI = row-pointer table, CX = row-length table, DI, B9E1, B9E3, 9480 = w, 9481 = h; out DI",shrink (scale ≤ 1): keeps a row when the next vertical bit is 1 [verified]
+func,0e12:2dc6,sprite_scale_rows_up,same as 2d54,"grow (1 < scale ≤ 2): stores every row once, with a repeat count B9D7 + bit [verified]"
+func,0e12:2e49,sprite_pick_scale,"near; in BX = 2·k, DX = depth key 8902[k], B9D5; out B9D8 = sprite number, B9D6 = apparent size; saves BX",B9D6 = hi(atan(size/depth)) in 8-px units [verified]
+func,0e12:2eb6,sprite_scale_patterns,"near; in B9D6, B9D7 (caller 0); out B9D7, masks B9EF..BA08 and BA0A..BA0C",converts the scale value to a doubling count + a 24-step remainder and loads the horizontal (56-bit) and vertical (24-bit) keep masks from CS:267E [verified]
+func,0e12:2f84,sprite_scale_row,"near; in BX = source pixels, CL = row-length word low byte, DI (ES), 9480 = w; out DI advanced, DX = DI at entry","one row, shrink: emits pad/pixel only where the horizontal mask bit is 1 [verified]"
+func,0e12:3004,sprite_scale_row_up,same as 2f84 but no DX output,"one row, grow: emits every pad/pixel once, and again when the mask bit is 1 [verified]"
+func,0e12:3085,sprite_list_build,"near, no args; saves SI DI","rebuilds the visible-candidate list 8B62[], count 94AE [verified]"
+func,0e12:312e,sprite_sort,near; saves SI,"full sort (quicksort) after a list rebuild, else bubble sort [verified]"
+func,0e12:3147,sprite_sort_bubble,near,"calls 797b on [first, 94AE-1] [verified]"
+func,0e12:316c,sprite_project,near; saves BP,"per listed sprite: screen angle 8C92, clamped distance 8A32, depth key 8902 [verified]"
+func,0e12:323e,draw_faces_and_sprites,near; saves ES SI DI BP,"frame driver: list/project/sort/animate/collide, then the face+sprite merge loop [verified]"
+func,0e12:3352,sprite_animate,near,"drift (95B7/95B9), animation chain (9611), crash-debris flight (ids 6..8) [verified]"
+func,0e12:33f7,sprite_collisions,near,"radius test on the depth key against 95CF, effect by collision class [verified (code); effects likely]"
+func,0e12:34c3,scene_prepare,near void(),"BAD4=60h; 4d60, 5e70, 394c, 361c, 34f1 (cockpit only), 373c, 4d6d, 5ffe [verified]"
+func,0e12:34f1,near_face_hits,near,"walk sorted faces with depth ≤ 94C1: types 18h/19h/1Bh → 4631, 1Ah → 4590, 1/2 → crash or bump [verified]"
+func,0e12:35f9,face_order_reset,near void(),order[i] = E5B8 + 10·i for 640h entries [verified]
+func,0e12:361c,faces_sort_keys,near void(),"per face depth key (average or bit-13 farthest rule), then full quicksort (list rebuilt) or one bubble pass-set [verified]"
+func,0e12:373c,sky_ground_draw,near void(),sky-flash countdown BAA6 (lightning / police); horizon line from 9496/roll; sky (flat or 5-band gradient) + ground polygon into V; mirror sky/ground 7b9b [verified]
+func,0e12:394c,vertices_project,near void(),"for every vertex: screen x (4A82, 1/32 px angle), horizontal distance (7002), depth (6382); mark y lazy (5702=7C82=8000h) [verified]"
+func,0e12:39fd,vertex_project_y,near (BX=2·v),front view y (5702) with pitch/roll; BAD4=min [verified]
+func,0e12:3a7c,draw_face_dispatch,"near (BX=2·v0, SI=2·v1, DH=w0_hi&C0h, ES:BP=&face.w1)","by vertex count: point 3bba, line 3c0c, triangle 3a91→3a9e, quad 3b0e [verified]"
+func,0e12:3a9e,draw_face_polygon,"near (BX,SI,DI [,BP] = vertex offsets)","front/mirror visibility tests, lazy y projection, choose rasterizer; face-under-camera path; quad split [verified]"
+func,0e12:3ebf,fill_around_camera,"near (BX,SI,DI)",triangle enclosing the camera: for its 3 edges (sorted by x) fill below (ground) or above (BACF) [verified]
+func,0e12:3f6c,fill_below_edge,"near (AX=x0, CX=x1, BX/SI=vertex offsets, 5702)",fill the region below the edge down to the view bottom (between x0..x1) [verified]
+func,0e12:3fe5,fill_above_edge,near (same),"fill the region above the edge, from BA9C (or the edge top) [verified]"
+func,0e12:409c,view_setup,far void(),"view size from 09C4/B6DC: BA8F,BA91,BA93,BA95,BA97,BA99,BD3D,B7AF[8]; patches 24 clip immediates in CS (table DS:BAE4) [verified]"
+func,0e12:41d4,fill_spans,"near (SI=x left, BP=x right in 1/32 px; BA9C,BAC1/3/5,BAB3/5,9460/2,BABD/F,BAC7..BACD,BAAF/BAB0,BAB1,BA9A)",3-segment edge walker writing dithered spans (or OR-ing when type 0) into V [verified]
+func,0e12:43db,blob_spans,"near (SI,BP=x; BAB3,BAB5,BA9C,BAC1)","disc-like blob, no dither [verified]"
+func,0e12:44c2,line_thin_spans,"near (BP=x top, SI=x step; BA9C,BAC1)","1-px line as per-row spans, no dither [verified]"
+func,0e12:4590,plate_fold_down,"ES:BP=&face.w3, keeps BX,CX","type-1Ah face pair: fold the 2nd face flat, both faces → type 3; sfx 4 [verified]"
+func,0e12:4631,knockover_hit,"CH=type, ES:DI=&sort ptr, keeps BX,CX","find the object owning the face, replace its model (knocked-over variant / bird takes off), force world rebuild, damage roll [verified]"
+func,0e12:46c0,cockpit_overlays,near void(),"46dc; if !948B: 4b37, 4bf3, 4a5c [verified]"
+func,0e12:46dc,precipitation_draw,near void(),"snow (BC77) flakes / rain (BC75) streaks into V, spawn windscreen drops; no weather: retire one drop slot [verified]"
+func,0e12:477c,rain_streaks,"near (es=V, al=colour, di=rand base, si=n-1, bx=limit)","2n vertical streaks, length ((n+1)>>1)+3 [verified]"
+func,0e12:47aa,snow_flakes,near (same regs),2n single pixels + copies at offset ^0x4000 [verified]
+func,0e12:47d1,windscreen_spawn,"near (si=n, dl=type)",0..2 new drops per frame from RNG DS:00D2/00D4 [verified]
+func,0e12:47fc,windscreen_splat,"near (ax=rand word, dl=type)",put drop in 64-slot ring; compute wiper key [verified]
+func,0e12:487e,windscreen_drops_draw,near void(),age and draw the 64 drops into V [verified]
+func,0e12:48f5,drop_shape_fresh,"near (es:di, ax=colour pair, bx=limit)",5-row blob (age ≤ 1) [verified]
+func,0e12:495c,drop_shape_old,near (same),"7/8-row speckle, 2 variants by colour [verified]"
+func,0e12:4a5c,wipers_update_draw,near void(),"wiper state machine, wipe drops, draw drops, draw 2 wiper blades [verified]"
+func,0e12:4b37,headlight_beam_draw,near void(),2 quads OR-ed with colour 08 (brightening) when headlights on at night / in weather [verified (OR effect: likely)]
+func,0e12:4bf3,dashboard_edge_draw,near void(),4-quad silhouette of the dash/hood at the view bottom (crashed variant after crash) [verified]
+func,0e12:4c51,replay_start,near void(),"enter replay camera (948B=1, 94B2=1), end-mark the recorder ring [verified]"
+func,0e12:4cb0,overlay_quads4_draw,near (stack: outline colour pair),4 quads from slots C68..C7E + 2 edge lines [verified]
+func,0e12:4d60,objects_update,"near, no args","calls 4fc7, 509b, 5ad4, 5df9 [verified]"
+func,0e12:4d6d,obj_runtime_colours_all,near; CX in = leftover (see 4db6),"per-frame counters, traffic-light phase; 4db6 for every object with faces [verified]"
+func,0e12:4db6,obj_face_runtime_colours,"BX=slot, CX=loop limit (not initialised)","override colour word of the object's leading faces of types 4–12; type 13 animates model vertices 0,1 (wipers) [verified]"
+func,0e12:4fc7,parked_vehicles_emit,near; clobbers all,emit objects 0..A477−1 with flags 1000h set / 2000h clear (parked vehicles; lightning object) via 539d [verified]
+func,0e12:509b,moving_objects_update,near,"per moving object (flags 2000h): timers, 5466, integrate velocity, window test, emit via 52a3 + 7487 (face cache) [verified]"
+func,0e12:52a3,obj_emit_vehicle_moving,"BX=slot, DX=Manhattan dist → CX=nf (normal path)","set placement from object arrays, pick model/LOD, transform vertices (75c1) [verified]"
+func,0e12:539d,obj_emit_vehicle,"BX=slot, DX=dist, ES=O-set seg",as 52a3 for parked O-models; reuses last frame's vertex+face ranges when slots unchanged; emits faces [verified]
+func,0e12:5ad4,vehicle_collisions,near,"clears/sets stop flags; pairwise box test of moving objects vs lower-index visible objects; sets 8000h/9000h, crash BAA8 [verified]"
+func,0e12:5cf2,vehicle_collision_boxes,"BX=slot j, box centre in BCC4/BCC6/BCC8, [9462]=r,h of i's box, ES/SI clobbered","test all boxes of object j, OR bits into 946C [verified]"
+func,0e12:5df9,lighthouse_rotate,near,moves 2 vertices of the lighthouse's first face on a circle (beam) [verified]
+func,0e12:5e70,crossing_gate_update,near,"train (models 12h–14h) near first gate → gate angle BCD8, bells; calls 5f57 for up to 2 gates [verified]"
+func,0e12:5f57,crossing_gate_arm_place,SI=gate slot,"place arm tip vertices from BCD8, arm length 95D6 [verified]"
+func,0e12:5ffe,police_update,near,"police (models 11h, 30h): radar level, pursuit start, catch/ticket, siren sound [verified (code), likely (meaning)]"
+func,0e12:61d2,police_pursuit_clear,near,flags &= BFBFh for all police models; BCB6=0 [verified]
+func,0e12:61fd,opponent_times_finalize,"far (race_run end, if B09)","624a for both opponents, copy times to results records 1,2 (DS:E80F, E82A) [verified]"
+func,0e12:624a,opponent_time_estimate,"BX=opp slot (2/4), SI=0/3",unfinished opponent: estimate time from distance; add 20 s per ticket [verified]
+func,0e12:6316,plane_height_at_camera,"near (BX,SI,DI) → AX","height of the triangle's plane at camera X/Z (BCDF), BACF=1 if above camera Y [verified]"
+func,0e12:6421,ground_slope_update,near void(),"no drawing: terrain triangle under the car (BA89/8B/8D) → roll code BCDC, clamped pitch delta BCDD [verified]"
+func,0e12:6604,rotate_by_heading,"near (ax=a, cx=c, [946A]=angle byte) → ax, cx","rotates vector by 256-step angle with Q15 tables DS:B7CF (sin, 65 entries) / DS:B851 (cos) [verified]"
+func,0e12:6666,slope_to_roll_code,near (al) → al,sign(al) × DS:BD01[(abs(al)&0x7F)>>2]; roll is a *shift count* (0 = level) [verified]
+func,0e12:66ad,point_draw,"near (BX=2·v, SI=w0)","lamp blob: size 95D9[k] over distance, width by the owning object's heading (one-sided with w0 bit 13) → 43db [verified]"
+func,0e12:67af,line_draw,"near (BX,SI=vertex offsets, AX,DX=their x, ES:BP=&w0)",thin (44c2) or width 95DD[k] scaled by distance (parallelogram via 41d4) [verified]
+func,0e12:682e,tri_fill,"near (BX,SI,DI)","sort by y; flat row 685c, flat bottom 68b0, flat top 6909, general 6956 → 41d4 [verified]"
+func,0e12:685c,tri_fill_row,entry inside 682e (also from 69da),one row from min x to max x [verified]
+func,0e12:68b0,tri_fill_flat_bottom,entry inside 682e (also 69da),apex top [verified]
+func,0e12:6909,tri_fill_flat_top,entry inside 682e (also 69da),apex bottom [verified]
+func,0e12:69da,quad_fill,"near (BX,SI,DI,BP; BAD0=face)","y-sort with top-vertex word tracking (BAD2), degenerate cases → triangle entries, else 2- or 3-segment chains → 41d4 [verified]"
+func,0e12:6f9c,polar_small,"near (bl=angle, dl=dist) → cx=dX, dx=dZ",−2·dist·sin/cos via CS table 0e12:0FF2 [verified]
+func,0e12:70b8,obj_ranges_clear,near void(),"B0F9[i]=0, B379[i]=0 for 160 objects [verified]"
+func,0e12:70cd,world_build_visible,near void(),"when the car's cell or heading octant changes: reset lists, emit the 3/6/10 visible cells (72f8 AH=0) and the static objects in them (72f8 AH=1); else only route id 0A74. Settled name (was world_cells_collect / world_build_visible) [verified]"
+func,0e12:72f8,model_place,"near (AL=model, AH=0 tile / 1 O-object; BD2A/2C/2E, 946A, BD38, BD26)","resolve model (alias rule), 75c1 vertices, 7487 faces, then tile sprite children into the sprite instance list. Settled name (was obj_emit_static / model_place) [verified]"
+func,0e12:7487,model_emit_faces,"near (ES:SI=first face, CX=nf, 945E=vertex base)",append nf−BD24 faces (max 640h) as 10-byte records with remapped colour pair; record object range; note gate/lighthouse objects. Settled (was obj_emit_faces / model_faces) [verified]
+func,0e12:75c1,model_emit_vertices,"near (ES:SI=first A word, CX=nv, 946B=nv) → SI past C[]","reserve nv vertices at BADA (max 630h), world-space transform via 7653, record object range. Settled (was obj_transform_verts / model_vertices) [verified]"
+func,0e12:7653,vertex_rotate,"near (ES:SI=&A[i], BX=2·nv, BD38, 946A) → DX=A', AX=B', CX=C'","pitch shear, fine rotation (64 steps/quarter, Q15 tables B7CF/B851), quarter turn. Settled (was vert_rotate / vertex_rotate) [verified]"
+func,0e12:76ec,frame_update,far void(),"per frame: shake, sim, camera select, 70cd, 34c3 (3D build + sky/ground into V) [verified]"
+func,0e12:77d5,frame_draw,far void(),page 1; 323e faces+sprites into V/M; overlays; mirror frame; page 0 [verified]
+func,0e12:78a7,sprite_sort_quick,near; sets BX = 2,"calls 78cc on [first, 94AE-1] [verified]"
+func,0e12:78cc,sprite_qsort,"near, cdecl-like: [bp+6] = first ptr, [bp+4] = last ptr (into 8902), BX = 2","recursive quicksort, descending on 8902; ranges ≤ 20 elements go to 797b [verified]"
+func,0e12:794b,sprite_rec_swap,"near; SI, DI = pointers into 8902",swaps two records in the four parallel arrays (stride 130h) [verified]
+func,0e12:797b,sprite_bubble_sort,"near; [bp+6] = first ptr, [bp+4] = last ptr","bubble sort, descending, pass ends at the last swap [verified]"
+func,0e12:7a18,faces_quicksort_all,near void(),"7a35(keys[0], keys[BAD8−1]) [verified]"
+func,0e12:7a35,faces_quicksort,"near cdecl (lo, hi byte ptrs into key array, ES=E5BA, BX=2)","ascending quicksort on u16 keys, parallel pointer array at −C80h; ≤ 21 elements → 7b06 [verified]"
+func,0e12:7b06,faces_bubble_sort,"near cdecl (lo, hi)",ascending bubble passes ending at the last swap; stops when the remaining range is ≤ 2 elements (quirk) [verified]
+func,0e12:7b9b,mirror_sky_ground,near void(),"mirror horizon (from 948F, roll sign ignored) → 7cd9 sky, 7d94 ground into M [verified]"
+func,0e12:7c21,mirror_frame_draw,far void(),clear M grey when invalid/turned off; draw M border; draw mirror lower rim into V [verified]
+func,0e12:7cd9,mirror_fill_above_edge,"near (as 3fe5, y halved)",clone of 3fe5 for M [verified]
+func,0e12:7d94,mirror_fill_below_edge,"near (as 3f6c, y halved, bottom 13h)",clone of 3f6c for M [verified]
+func,0e12:7e11,fill_spans_mirror,as 41d4,"mirror clone: segment 90D2, rows B993, 13h rows, width B00h [verified]"
+func,0e12:81c7,point_draw_mirror,as 66ad / 43db,"mirror clones (distance ×2, 14h for BA99, mirror x/y) [verified]"
+func,0e12:8016,blob_spans_mirror,as 66ad / 43db,"mirror clones (distance ×2, 14h for BA99, mirror x/y) [verified]"
+func,0e12:82d6,line_draw_mirror,as 67af / 44c2,mirror clones [verified]
+func,0e12:80fb,line_thin_spans_mirror,as 67af / 44c2,mirror clones [verified]
+func,0e12:836e,tri_fill_mirror,as 682e..,mirror clone of 682e with mirror x transform [verified]
+func,0e12:839c,tri_fill_mirror_839c,as 682e..,mirror clone of 682e with mirror x transform [verified]
+func,0e12:8413,tri_fill_mirror_8413,as 682e..,mirror clone of 682e with mirror x transform [verified]
+func,0e12:8490,tri_fill_mirror_8490,as 682e..,mirror clone of 682e with mirror x transform [verified]
+func,0e12:85a9,quad_fill_mirror,as 69da,mirror clone of 69da [verified]
+func,0e12:8b5f,vertex_project_y_mirror,near (BX=2·v),"mirror y (7C82), half scale, centre row 0Ah [verified]"
+global,DS:2502,vert_y,s16[640h],"world-space vertices of this frame (x, z in position·4 units)"
+global,DS:3182,vert_x,s16[640h],"world-space vertices of this frame (x, z in position·4 units)"
+global,DS:3E02,vert_z,s16[640h],"world-space vertices of this frame (x, z in position·4 units)"
+global,DS:2504,spr_remap_off,u16,"pixel data start, remap table offset, record count n (incl. header)"
+global,DS:2506,spr_count,u16,"pixel data start, remap table offset, record count n (incl. header)"
+global,DS:4A82,scr_x,u16[640h],screen x = bearing angle in 1/32 px; overlay polygons use slots 630h..63Fh
+global,DS:5702,scr_y,s16[640h],"front-view row, 8000h = not yet projected"
+global,DS:6382,vert_depth,u16[640h],abs(dy) + dist painter key
+global,DS:7002,vert_dist,u16[640h],horizontal distance (position·4 units)
+global,DS:7C82,mir_y,s16[640h],"mirror row, 8000h = not yet projected"
+global,DS:8902,spr_key,u16[98h],depth key abs(dy) + dist (FFFFh for id 0)
+global,DS:8A32,spr_dist,u16[98h],"horizontal distance, clamped ≥ 95CD for ids > 8"
+global,DS:8B62,spr_inst,u16[98h],instance index ×2
+global,DS:8C92,spr_angle,u16[98h],"screen x in 1/32 px = angle − heading + view centre (multiple of 20h, see 28eb)"
+global,DS:945E,vert_base,u16,vertex base of the model being emitted (75c1 → 7487); temp in 3a9e/69da/6316
+global,DS:9460,dxl2,s16,span engine: segment-2 slopes (also temps in 6316)
+global,DS:9462,dxr2,s16,span engine: segment-2 slopes (also temps in 6316)
+global,DS:9464,quad_temps,s16,"x of top, heights to b / c"
+global,DS:946A,place_rot,u8,"model rotation byte (7653); reused as ""flip""/""opposite"" flag by 3fe5 and 69da"
+global,DS:946B,place_nverts,u8,loop counter (vertices / sprite children)
+global,DS:947D,swap_flag,u8,4 when the atan ratio was inverted
+global,DS:947E,spr_x,u16,"sprite centre x in px, then left x after clip"
+global,DS:9480,spr_w,u8,"build: source w, h, row pixel count; draw: W, remaining H"
+global,DS:9481,spr_rows,u8,"build: source w, h, row pixel count; draw: W, remaining H"
+global,DS:9482,row_m,u8,"build: source w, h, row pixel count; draw: W, remaining H"
+global,DS:9496,cam_row,s16,horizon row = pitch + BA8F
+global,DS:9498,cam_heading,u16,"camera heading (10000h = 360°, 0 = +Z)"
+global,DS:949A,cam_x,u16,camera cell coords (&7FFF / &3FFF)
+global,DS:949C,cam_z,u16,camera cell coords (&7FFF / &3FFF)
+global,DS:949E,cam_y,s16,eye height
+global,DS:94A0,cam_roll,s8,roll shift code
+global,DS:94A1,cam_x4,u16,camera X/Z ·4 (+2 fraction bits)
+global,DS:94A3,cam_z4,u16,camera X/Z ·4 (+2 fraction bits)
+global,DS:94AE,sprite_vis_count,u16,"entries in the four arrays below (≥ 9, ≤ 98h)"
+global,DS:94B0,sprite_vis_first,u16,"first k of the merge loop; static 0, no writer found"
+global,DS:94B4,car_x_saved,u16,car X/Z when not replaying
+global,DS:94B6,car_z_saved,u16,car X/Z when not replaying
+global,DS:94C1,near_depth,u16,depth threshold / vertical tolerance for 34f1
+global,DS:94C3,near_dy,u16,depth threshold / vertical tolerance for 34f1
+global,DS:94CD,car_cockpit_edge,u16,dash fill / dash edge-line colour pairs (0404 / 0C0C default)
+global,DS:94CF,beam_verts,"(y, x<<5)×8",headlight trapezoid rows 72..95
+global,DS:94E7,wiper2_dx,i16,0x1040 = 130 px shift of the right wiper
+global,DS:94E9,wiper_radius,u16,0x78: drops farther than this from a pivot are never wiped
+global,DS:94EB,wiper_verts,"u16 (hi=y, lo=x)",wiper blade polygon per phase 0..4
+global,DS:9525,wiper_keys,i16,"0x602C, 0x7FFF, 0x137, 0x8A, 8, −0x42 (angle keys, index −1..4)"
+global,DS:9531,dash_verts_crashed,"(x, y) words",dash silhouette
+global,DS:9561,dash_verts,"(x, y) words",dash silhouette
+global,DS:95C0,sky_colours,u8[4],"EGA sky (C0 / alt C1), VGA sky (C2 / alt C3); alt when 95C8"
+global,DS:95C4,ground_colour,u8[2],"ground colour codes (lo, hi) → B4B9 pair"
+global,DS:95CD,sprite_min_proj_dist,u16,17Bh in all legs: minimum distance used for the *vertical* projection of sprites with id low byte > 8 (stops near sprites diving off the bottom)
+global,DS:95D9,point_sizes,u8[4] / u8[4],world size of points / thick lines by w0 bits 11–12
+global,DS:95DD,line_widths,u8[4] / u8[4],world size of points / thick lines by w0 bits 11–12
+global,DS:9A83,sprite_8_type,,sun (5) / moon (4) / none (0) placed at camera ± 0x900
+global,DS:9D03,x,,sun (5) / moon (4) / none (0) placed at camera ± 0x900
+global,DS:9F83,z,,sun (5) / moon (4) / none (0) placed at camera ± 0x900
+global,DS:A203,y,,sun (5) / moon (4) / none (0) placed at camera ± 0x900
+global,DS:9D01,sprite_7_x,,crash object in replay (94B2==2)
+global,DS:9F81,z,,crash object in replay (94B2==2)
+global,DS:A201,y,,crash object in replay (94B2==2)
+global,DS:ABF9,obj_vel,u16,"lo = s8 vx, hi = s8 vz (per frame, position units)"
+global,DS:AFB9,obj_vert_base,u16,vertex range this frame
+global,DS:B0F9,obj_vert_count,u16,vertex range this frame
+global,DS:B239,obj_face_base,u16,face range this frame (0 count = not drawn)
+global,DS:B379,obj_face_count,u16,face range this frame (0 count = not drawn)
+global,DS:B4B9,colour_pairs,u16[256] / u8[16],VGA colour tables (leg file)
+global,DS:B6B9,colour_direct,u16[256] / u8[16],VGA colour tables (leg file)
+global,DS:B6D1,mirror_dirty,u8,copy M once more (after switching mirror off / layout restore)
+global,DS:B6D2,mirror_on,u8,rear-view mirror pass enabled (key R)
+global,DS:B6DC,half_window,u8,F1: 240×64 view
+global,DS:B6DD,detail,u8,"F2: 0 low, 1 medium, 2 high (visible cells, gradient sky, sprite/vehicle ranges)"
+global,DS:B6E0,2,u16,"300h / 440h / 700h by detail (B6E2 also limits sprite depth, next row)"
+global,DS:B6E2,4,u16,"300h / 440h / 700h by detail (B6E2 also limits sprite depth, next row)"
+global,DS:B78F,oct_y,u16[8],octant tables for 394c/39fd/316c (B7AF set by 409c)
+global,DS:B79F,oct_half,u16[8],octant tables for 394c/39fd/316c (B7AF set by 409c)
+global,DS:B7AF,oct_base,u16[8],octant tables for 394c/39fd/316c (B7AF set by 409c)
+global,DS:B7CF,sin64,s16[65],"Q15 sin/cos, 64 steps per quarter"
+global,DS:B851,cos64,s16[65],"Q15 sin/cos, 64 steps per quarter"
+global,DS:B8D3,row_ofs,u16[60h] / u16[13h],row → byte offset in V / M
+global,DS:B993,mrow_ofs,u16[60h] / u16[13h],row → byte offset in V / M
+global,DS:B9CB,restart_x,u16/u8,restart point used by 2465 when B9D3 or B78D
+global,DS:B9D4,spr_vis_w,u8,visible width after horizontal clip
+global,DS:B9D5,spr_view,u8,hi(8C92[k]) + 8; bit 7 = mirror
+global,DS:B9D6,spr_scale,u8,"scale value (≤ 17h shrink, 18h..2Fh grow) / apparent size at draw"
+global,DS:B9D7,spr_grow,u8,"number of 24-step octaves above 1:1 (0 shrink, 1 grow; 2, 3 unreachable)"
+global,DS:B9D8,spr_num,u8,"current sprite id (316c stores the full low byte, 2e49 the id & 3Fh)"
+global,DS:B9D9,pad,u8,(w − m) >> 1 for the row being scaled
+global,DS:B9DA,rows_out,u8,output rows of the copy being built
+global,DS:B9DB,spr_h,u16,"H of the copy being drawn (low byte written; B9DC is never written, 0)"
+global,DS:B9DE,rep_count,u8,remaining repeats of the current stored row
+global,DS:B9DF,clip_left,u16,pixels clipped on the left (0 = not clipped)
+global,DS:B9E1,rep_ptr,u16,cache offset of the current repeat byte
+global,DS:B9E3,copy_hdr,u16,"cache offset of the copy's (W, H) bytes"
+global,DS:B9E5,cache_limit,u16,D000h
+global,DS:B9E7,copy_h,u16,h byte (length of the repeat table) of the copy being drawn
+global,DS:B9E9,last_wh,u16,"(W, H) of the previous step (dedup)"
+global,DS:B9EB,sprite_cache_seg,u16,normalised segment of the cache: (E53C >> 4) + 1 + E53E; B9ED = copy set per draw
+global,DS:B9ED,seg2,u16,normalised segment of the cache: (E53C >> 4) + 1 + E53E; B9ED = copy set per draw
+global,DS:B9EF,hmask,u8[26],"horizontal keep mask; bytes 0-6 = entry bytes 0-6, repeated (only bytes 0-6 are reachable: w ≤ 54)"
+global,DS:BA0A,vmask,u8[3],24-bit vertical keep mask (rotating)
+global,DS:BA0D,sprite_max_size,u8,BA3F[95BF-1] (1Ah / 17h / 12h)
+global,DS:BA0E,size_to_step,u8[31h],apparent size (0..30h) → step index (table below)
+global,DS:BA3F,step_to_size,u8[17],step → scale value B9D6 used when building (table below)
+global,DS:BA55,world_rebuilt,u8,set when 70cd rebuilt the lists (also F5/replay): sprite list rebuild + full face sort
+global,DS:BA56,veg_seed,u16,vegetation thinning bits (by detail: all / 5555h mask / 0)
+global,DS:BA58,debris_vx,s8[3] / s8[3] / u8[3·12],crash debris velocities and height profile
+global,DS:BA5B,debris_vz,s8[3] / s8[3] / u8[3·12],crash debris velocities and height profile
+global,DS:BA5E,debris_h,s8[3] / s8[3] / u8[3·12],crash debris velocities and height profile
+global,DS:BA82,msg_protect,u8,1 after a message box: present skips 15h rows
+global,DS:BA83,roof_height,u16,ceiling face above the camera (bridge types 14h–17h out of clearance)
+global,DS:BA85,ground_height,u16,highest ground face under the camera this frame (0 = none)
+global,DS:BA89,ground_tri,u16×3,its vertices (byte offsets)
+global,DS:BA8F,horizon_base,u16,horizon row at zero pitch (38h / 28h)
+global,DS:BA91,view_rows,u16,60h / 40h / 56h
+global,DS:BA93,view_bytes,u16,BA91·140h
+global,DS:BA95,view_w32m,u16,(width−1)·32
+global,DS:BA97,view_cx32,u16,view centre x in 1/32 px
+global,DS:BA99,view_cx_hi,u8,view centre / 100h (14h / 0Fh / 10h)
+global,DS:BA9A,face_type,u8,"w3_hi & F8h of the face being drawn (70h for sky/ground/overlays, 0 = OR mode)"
+global,DS:BA9B,surface_under_car,u8,ground type of the face around the camera (FFh = none); ≥ 1Ch sticks
+global,DS:BA9C,span_top,s16,first row of the current fill
+global,DS:BA9E,sky_top,s16,top row of the sky pass
+global,DS:BAA0,sky_pair_ega,u16,colours of the sky / ground this frame (BAA2/BAA4 reused by the mirror)
+global,DS:BAA2,sky_pair,u16,colours of the sky / ground this frame (BAA2/BAA4 reused by the mirror)
+global,DS:BAA4,ground_pair,u16,colours of the sky / ground this frame (BAA2/BAA4 reused by the mirror)
+global,DS:BAA6,sky_flash,u8,flash frames left
+global,DS:BAAF,reload2,u8,"sides reloaded at segment 2 / 3 (bit 0 left, bit 1 right)"
+global,DS:BAB0,reload3,u8,"sides reloaded at segment 2 / 3 (bit 0 left, bit 1 right)"
+global,DS:BAB1,colour,u16,colour pair of the current fill (low byte on (x^y) odd)
+global,DS:BAB3,dxl,s16,per-row x decrement of the left / right edge (1/32 px)
+global,DS:BAB5,dxr,s16,per-row x decrement of the left / right edge (1/32 px)
+global,DS:BAB7,around_sorted,u16×3,vertices sorted by x (3ebf)
+global,DS:BABD,dxl3,s16,segment-3 slopes
+global,DS:BABF,dxr3,s16,segment-3 slopes
+global,DS:BAC1,rows1,u16,row counts of the three segments
+global,DS:BAC3,rows2,u16,row counts of the three segments
+global,DS:BAC5,rows3,u16,row counts of the three segments
+global,DS:BAC7,xl2,u16,x at the start of segment 2 / 3
+global,DS:BAC9,xr2,u16,x at the start of segment 2 / 3
+global,DS:BACB,xl3,u16,x at the start of segment 2 / 3
+global,DS:BACD,xr3,u16,x at the start of segment 2 / 3
+global,DS:BACF,plane_above,u8,1 = the face around the camera is above the eye (fill upwards)
+global,DS:BAD0,face_ptr,u16,current face record offset (overlays: DS offsets of fake records)
+global,DS:BAD2,quad_top_word,u16,record word offset of the top vertex
+global,DS:BAD4,top_row,s16,topmost row touched this / previous frame (present skips rows above the min)
+global,DS:BAD6,top_row_prev,s16,topmost row touched this / previous frame (present skips rows above the min)
+global,DS:BAD8,face_count,u16,emitted faces (≤ 640h) / vertices (≤ 630h)
+global,DS:BADA,vert_count,u16,emitted faces (≤ 640h) / vertices (≤ 630h)
+global,DS:BADC,static_face_end,u16,end of the world part (vehicles appended after)
+global,DS:BADE,static_vert_end,u16,end of the world part (vehicles appended after)
+global,DS:BAE0,parked_face_end,u16,end of parked part
+global,DS:BAE2,parked_vert_end,u16,end of parked part
+global,DS:BAE4,clip_patch_ptrs,u16[24],CS addresses of the immediates patched by 409c
+global,DS:BB14,precip_offsets,u16,const pseudo-random offsets for flakes/streaks
+global,DS:BB34,drop_ring_idx,u8,ring index 0..63
+global,DS:BB35,drop_state,u8,"bits7-6 type (00 bug brown, 40 rain, 80 snow, C0 black), bits5-0 age; 0 = empty"
+global,DS:BB75,drop_pos,u16,V byte offset (rand>>1)
+global,DS:BBF5,drop_key,i16,wiper angle key; 0x8000 = unwipeable
+global,DS:BC7B,wipers_on,u8,"switch; phase 0, 1..4 out, 83..81 back"
+global,DS:BC7C,wiper_phase,u8,"switch; phase 0, 1..4 out, 83..81 back"
+global,DS:BCAD,obj_timers,u8,saturating per-frame countdowns (BCAF used by 5466)
+global,DS:BCB3,beacon_colour,u16,9 → 0Ch → 0Fh → 9 (+3 per beacon face) (initial 0)
+global,DS:BCC3,obj_full_transform,u8,1 = do not use the translated-vertex cache
+global,DS:BCC4,obj_move_dx,s16,this frame's movement (dy: see 509b); scratch = box centre in 5ad4
+global,DS:BCC6,dz,s16,this frame's movement (dy: see 509b); scratch = box centre in 5ad4
+global,DS:BCC8,dy,s16,this frame's movement (dy: see 509b); scratch = box centre in 5ad4
+global,DS:BCCA,saved_vert_base,u16,object's AFB9/B0F9 before 52a3
+global,DS:BCCC,count,u16,object's AFB9/B0F9 before 52a3
+global,DS:BCD0,tlight_lamp,u8,running index 0–5 of type-11 faces this frame
+global,DS:BCD1,wiper_frame,u8,+1 per frame
+global,DS:BCD2,lighthouse_slot,u16,object slots noticed by 7487 (FFFFh = none)
+global,DS:BCD4,gate_slot1,u16,object slots noticed by 7487 (FFFFh = none)
+global,DS:BCD6,gate_slot2,u16,object slots noticed by 7487 (FFFFh = none)
+global,DS:BCDF,plane_height,s16,6316 result
+global,DS:BD21,sprite_children,u8,sprite children appended this rebuild (≤ F0h)
+global,DS:BD22,vert_overflow,u8,1 = vertices did not fit: skip faces
+global,DS:BD23,faces_resort,u8,full re-sort requested
+global,DS:BD24,model_face_cut,u16,faces not emitted (tile alias)
+global,DS:BD26,cur_obj_slot1,u16,"object slot·2+2 of the model being emitted, 0 = tile"
+global,DS:BD28,model_ptr,u16,offset of the model header
+global,DS:BD2A,place_x,u16,model origin (position units; y = height)
+global,DS:BD2C,place_z,u16,model origin (position units; y = height)
+global,DS:BD2E,place_y,u16,model origin (position units; y = height)
+global,DS:BD30,place_x4,u16,origin ·4
+global,DS:BD32,place_z4,u16,origin ·4
+global,DS:BD34,last_cell,u16,cache key of the visible-cell list (FFFFh forces a rebuild)
+global,DS:BD36,last_octab,u16,cache key of the visible-cell list (FFFFh forces a rebuild)
+global,DS:BD38,place_shear,s8,pitch shear shift (0 = none)
+global,DS:BD39,frame_counter,u16,+1 per frame_update
+global,DS:BD3D,mirror_base,u16,7500h + BA99·100h; mirror x = (1600h − (x − BD3D)) >> 1
+global,DS:CC5C,view_block,far ptr,malloc(7810h) for V
+global,DS:CC8E,key_ofs,u16,offsets (in seg E5BA) of the face key array (E5B8+4B00h) and order array (E5B8+3E80h)
+global,DS:CEB8,order_ofs,u16,offsets (in seg E5BA) of the face key array (E5B8+4B00h) and order array (E5B8+3E80h)
+global,DS:E338,video_mode,u16,"13h = VGA (mode 13h), 0Dh EGA, 09h Tandy"
+global,DS:E5B0,remap_ptr,far ptr,colour-code remap (E5B8+5780h)
+global,DS:E5B8,face_block,far ptr,"malloc(57B0h): faces 640h×10, order, keys, remap"
+global,DS:E7DC,mirror_block,far ptr,DOS block 300h paragraphs (also the LZ dictionary)

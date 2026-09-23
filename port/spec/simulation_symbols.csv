@@ -1,0 +1,250 @@
+kind,address,name,type,notes
+func,0977:0008,car_physics,far void(void),per frame from frame_update unless frozen/replay: engine torque/drag/resistance; speed; ground contact and gravity; grip/skid; steering; gauges; rev limit (compiled C)
+func,0ab4:120f,replay_clear,far void(void),zero the ring buffer CS 0ab4:020F (800h words)
+func,0ab4:1220,replay_update,far void(void),"per frame: record ring buffer (state 0), play back (1), wreck animation (2)"
+func,0ab4:1460,debris_sprites,near (BX AX DX CX),3 debris sprite instances ids 8 7 6
+func,0ab4:14b9,replay_play_frame,near void(void),read one recorded frame into the sprite/object tables
+func,0ab4:1544,replay_rec_objects,near (BX index),record visible moving objects (9 words each)
+func,0ab4:1604,replay_play_objects,near (BX index),read object records until FFFFh
+func,0e12:0080,controls_poll_far,far void(void),call 0e12:0751; retf: far stub of controls_poll used by race_input(0/1); the seed name key_dispatch belongs to 0e12:0084
+func,0e12:0084,key_dispatch,far void(void),dispatch DS:E08C: 40h-7Fh via CS:0000 table; 81h-8Ah via DS:B6EF when race_state < 2; else controls_poll
+func,0e12:00d5,key_none,near void(void),table filler: controls_poll
+func,0e12:00d9,key_mouse_toggle,near void(void),F7: mouse steering on/off; asks sensitivity (msg 32h) -> B6CB
+func,0e12:012d,key_mirror,near void(void),R: DS:B6D2 ^= 1 (rear-view mirror; Likely)
+func,0e12:0133,key_wheel_centring,near void(void),C: DS:B6DA ^= 1; msg 0Eh/0Fh
+func,0e12:0149,key_version,near void(void),V: msg 20h version
+func,0e12:0156,gear_up,near void(void),gear++ (not in replay); throttle = 1232 (x2 into 1st); B707 = 1
+func,0e12:0188,gear_up_gate,near void(void),key A / Enter+Up; CERV range jump
+func,0e12:01c5,gear_lever_target,far void(void),CC57 = E565[gear]; E5B6 = 0
+func,0e12:01d8,gear_down,near void(void),gear-- (not in replay); into R while rolling > 14h damages R (sfx 11); throttle = 1234 (x2 into R)
+func,0e12:0229,gear_down_gate,near void(void),key Z / Enter+Down; CERV range jump
+func,0e12:0269,key_knob_toggle,near void(void),D: DS:B6DB ^= 1 (gear-lever knob display; Likely)
+func,0e12:026f,key_chase_view,near void(void),F5 CHASE CAR VIEW: toggle ext_view DS:948B (saves/restores ground state); during a crash replay: life_lost(1)
+func,0e12:0302,key_wipers,near void(void),W: DS:BC7B ^= 1 (not in replay; Likely wipers)
+func,0e12:030f,key_headlights,near void(void),H: DS:B6D8 ^= 1 (not in replay; Likely headlights)
+func,0e12:031c,key_window_size,near void(void),F1: DS:B6DC ^= 1; msg 0Ah/0Bh; 0e12:409c
+func,0e12:03ab,key_detail,near void(void),F2: detail B6DD cycle 0-2; msg 1Bh+; detail_apply
+func,0e12:03d4,detail_apply,near void(void),view distance B6DE/E0/E2 and vegetation mask BA56 by detail; strips traffic flags by skill
+func,0e12:044e,life_lost,far void(int skip),lives message; F10 replay request; next life (race_state 2) or game over (3)
+func,0e12:04f1,panel_erase,far void(DX),drawing: erase the replay panel
+func,0e12:0534,key_instant_replay,near void(void),F10: replay_start (0e12:4c51); during a replay: B6D5 = 1 and msg 19h
+func,0e12:056a,key_return_to_road,near void(void),F6 when B6D3: B9D3 = 1; E561 = 1; E774 = 2; msg 07h
+func,0e12:059c,key_replay_pause,near void(void),F9 (during a replay): B6D4 ^= 1; prints Paused
+func,0e12:05cd,key_steer_sensitivity,near void(void),F3: msg 31h with current DS:09C2 digit
+func,0e12:05e3,key_debug_rain,near void(void),T (dead: needs DS:B6EA): BC75 cycle 0-8
+func,0e12:0606,key_debug_snow,near void(void),S (dead: needs DS:B6EA): BC77 cycle 0-8
+func,0e12:0630,key_radio,near void(void),M: radio station B6CC cycle 0-2 via 01f4:1d22; msg 22h/27h/28h
+func,0e12:0667,key_debug_night,near void(void),N (dead: needs DS:B6EA): toggle 95C7 and sky colours
+func,0e12:06a9,key_debug_cam_adjust,near void(void),unreached: B6CD ^= 1 while frozen
+func,0e12:06b6,key_debug_flip,near void(void),O while frozen: B6D0 ^= 1 (used only by unreached 0e12:06c3)
+func,0e12:06c3,debug_projection,near void(void),unreached debug vertex projection using B6CE/B6D0
+func,0e12:0751,controls_poll,near void(void),reads key/joystick/mouse bits; brake; throttle release; shift keys; steering; replay camera keys
+func,0e12:08d9,mouse_controls,near CL(CL),mouse x -> steer_wheel; buttons/y -> gas/brake bits
+func,0e12:095a,auto_shift,near void(void),per frame: automatic up/down shifts (DS:0095) and CERV in-range shifts
+func,0e12:09d6,steer_throttle,near void(CL),throttle +-2; brake bit; keyboard steering ramp; analog joystick steering
+func,0e12:0b02,shift_keys,near void(CL),Enter+Up/Down -> gear gates
+func,0e12:0b1d,race_clock_hud,near void(void),race clock (5 frames = 1 s) then clock_draw compass_draw radar_detector
+func,0e12:0b85,clock_draw,near void(void),mm:ss in the top bar (hud)
+func,0e12:0cbe,compass_draw,near void(void),compass tape; dead debug readout of B70E (hud)
+func,0e12:0db4,radar_detector,near void(void),bars from B710>>4; blink 8 frames; beep sfx 0Eh every 16 frames
+func,0e12:0e74,overrev_damage,far void(void),every 4th rev-limit event (skill >= 3): engine (20h) or current gear damage
+func,0e12:0ec5,landing_damage,far void(void),hard landing (skill >= 3): 1/32 gear damage else random_damage
+func,0e12:0edb,random_damage,far void(void),1/8 suspension (4) or brakes (8) with sfx 12; 1/64 alignment (msg 2Eh); no skill check when called by 33f7/4631
+func,0e12:0f31,crash_start,near void(void),latch crashed B78D; music stop; shake 10h; crash_object = object whose face range holds BAA9
+func,0e12:0fa1,screen_shake_step,far void(void),per frame: DS:947C countdown -> display offset from CS table 0e12:0F81
+func,0e12:0fd6,bounce_back,near void(void),restore position from 3 frames ago; shake = 4
+func,0e12:22fe,vec_angle,near (CX x DX z) -> AX,atan2 via CS 0e12:12F6/16F8; also returns CX min DX max
+func,0e12:234b,polar,far void(u16 angle; u16 len),DS:9460 = len*sin; DS:9462 = len*cos (table CS 0e12:0FF2)
+func,0e12:23b1,grip_yaw_limit,far u16(u16 grip),max course change per frame (16-bit overflow for CERV)
+func,0e12:2465,life_reset,far void(void),per-life reset; respawn at road_mem[2] after F6 or a crash; immunity 32h
+func,0e12:33f7,sprite_collisions,near void(void),"sprite classes 20h-E0h (knock over, solid, splat, go back, wrong way)"
+func,0e12:34c3,scene_update,near void(void),"render root; runs traffic, gate, near_face_collisions, lights, police"
+func,0e12:34f1,near_face_collisions,near void(void),"faces within depth 60h: type 1 solid, 2 vehicles, 18h-1Bh signs, 1Ah barriers"
+func,0e12:3a7c,draw_face_dispatch,near,render dispatcher (objects spec name confirmed over face_under_car); ground query label 3d28 inside the triangle path
+func,0e12:4590,barrier_knockdown,near (ES:BP rec+6),flatten a type-1Ah barrier; sfx 4; shake 5; bump 3
+func,0e12:4631,object_face_hit,near (CH type ES:DI),knock over sign/cone/bird: model swap; sfx 5/12h; random_damage
+func,0e12:4c51,replay_start,near void(void),"replay / crash camera: replay_state 1, ext_view 1, end marker (index & 7FFh bug)"
+func,0e12:4d60,moving_objects_update,near void(void),calls 4fc7 509b 5ad4 5df9
+func,0e12:4fc7,obj_emit_parked,near void(void),parked 1000h objects; lightning flash + thunder sfx 9 when rain >= 6
+func,0e12:509b,traffic_update,near void(void),timers; per object vehicle_follow_lane + movement; visibility; emit
+func,0e12:5466,vehicle_follow_lane,near (BX = 2i),"waypoints, stops at lights/signs/crossing, branches, opponent scripts, overtaking (conflict: traffic_follow_path)"
+func,0e12:5aa4,lane_list_for_cell,near (SI cell) -> ES:SI,P.BIN list of the cell; 946A rotation; 946D count (conflict: path_tile_lookup)
+func,0e12:5ad4,vehicle_collisions,near void(void),vehicle boxes; player hit -> BAA8 
+func,0e12:5cf2,vehicle_collision_boxes,near (BX = 2j),box tests -> 946C bits 7/6/4
+func,0e12:5e70,crossing_gate_update,near void(void),train near gate -> BCD8 gate position; bells sfx 7/8
+func,0e12:5ffe,police_update,near void(void),radar level B710; chase at speed >= 48; pull-over 30 frames; ticket +20 s; siren sfx 14h/94h
+func,0e12:61d2,police_end_chases,near void(void),clear 4000h/40h on police models 11h/30h; pullover count 0
+func,0e12:61fd,opponents_final_times,far void(void),opponent times at leg end (Likely)
+func,0e12:624a,opponent_final_time,near (BX SI),estimate unfinished opponent time; ticket penalties (Likely)
+func,0e12:6316,tri_height_at_viewpoint,near (BX SI DI) -> AX,height of the triangle at the probe point 94A1/94A3
+func,0e12:6421,ground_slope_update,near void(void),BCDC roll code; BCDD pitch error clamp 18h; BA85 fallback
+func,0e12:6604,rotate_by_heading,near (AX CX),rotate by DS:946A (Q15 tables B7CF/B851)
+func,0e12:6666,slope_to_tilt_code,near AL -> AL,table DS:BD01
+func,0e12:6686,pitch_shear,far u8(u16 pitch),table DS:BCE1 -> model shear byte
+func,0e12:6e92,camera_pos_update,near void(void),camera X/Z and probe point 94A1/94A3; sun sprite 8; crash camera target
+func,0e12:6f9c,polar_small,near (u8 angle u8 radius),chase-camera offset
+func,0e12:70b8,obj_face_ranges_clear,near void(void),B0F9[160] = B379[160] = 0
+global,DS:008A,race_state,u16,1 driving; 2 resume (next frame 1); 3 leave race
+global,DS:0092,joystick_on,u16,0000:0f80 Ctrl-J/K
+global,DS:0094,joy_analog,u8,Ctrl-A analog / Ctrl-D digital
+global,DS:0095,auto_gearbox,u8,1 when skill < 3
+global,DS:00BC,joy_xmin,u16,joystick calibration
+global,DS:00BE,joy_xcentre,u16,
+global,DS:00C0,joy_xmax,u16,
+global,DS:00C2,joy_x,u16,current joystick x
+global,DS:00D2,rand_lo,u16,random word (low)
+global,DS:00D4,rand_hi,u16,random word (high)
+global,DS:0104,mouse_buttons,u16,bit0 left (brake) bit1 right (gas)
+global,DS:09DE,lives,u8,
+global,DS:0A74,route_index,u8,0-2 set by 70cd from route tiles 95C9 when the cell is unchanged
+global,DS:0A75,crash_count,u8,lives lost in the leg
+global,DS:1246,overrev_count,u16,rev-limit counter; 16 -> overrev_damage
+global,DS:1248,offroad_frames,u16,frames since last on road (9 bits); 40h -> msg 0Ch and F6 allowed
+global,DS:124A,course,u16,direction of travel (binary angle)
+global,DS:124C,body_heading,u16,car yaw; view_heading = & FFC0
+global,DS:124E,speed_long,i32,signed speed along the course (1296 = |v|-ish)
+global,DS:1252,vel_x,i32,per-frame step x (<<7 units)
+global,DS:1256,vel_z,i32,
+global,DS:125A,vel_y,i32,vertical velocity
+global,DS:125E,pos_x,i32,position x << 7
+global,DS:1262,pos_z,i32,
+global,DS:1266,pos_y,i32,
+global,DS:126A,pos_hist1,i32[3],position 1 frame ago
+global,DS:1276,pos_hist2,i32[3],2 frames ago
+global,DS:1282,pos_hist3,i32[3],3 frames ago (bounce_back)
+global,DS:128E,accel,i16,net force / speed change of the frame
+global,DS:1290,accel_smooth,i16,smoothed accel>>9 -> pitch
+global,DS:1292,accel_pitch,i16,
+global,DS:1294,speed_oct,u16,(|vx|+|vz|+2max)/12; no reader found outside
+global,DS:1296,car_speed,u16,octagonal 
+global,DS:1298,speed_sq,u32,car_speed^2 (low word only); no reader
+global,DS:129C,engine_rpm,u16,~rpm/10; clamped to 1500 by engine_sound
+global,DS:129E,rpm_prev,u16,
+global,DS:12A0,on_ground,u8,
+global,DS:12A1,yaw_slide,u8,course cannot follow the body (grip_yaw_limit)
+global,DS:12A2,skid,u8,traction limit exceeded
+global,DS:12A4,rpm_inertia,i32,engine inertia term added to the drive force
+global,DS:16D4,replay_pos,u16,ring byte index & FFFh
+global,DS:16D6,replay_end,u16,end of the last recorded frame
+global,DS:16D8,cam_moved,u8,camera moved by hand: no auto-follow
+global,DS:915C,kbd_bits,u8,ISR direction bits: 1 up 2 down 4 left 8 right 10h Enter 20h space
+global,DS:9460,sin_out,i16,polar() result x
+global,DS:9462,cos_out,i16,polar() result z
+global,DS:946C,coll_bits,u8,1 hit 2 near 4 close (5ad4)
+global,DS:946E,branch_mode,u8,0 none 1 A 2 B
+global,DS:947B,joy_bits,u8,joystick direction bits (same layout as 915C)
+global,DS:947C,shake,u8,screen shake countdown (index into CS 0e12:0F81)
+global,DS:9486,damage,u16,bits 0/1 alignment; 2 suspension; 3 brakes; 5 engine; 8+gear gear broken
+global,DS:9488,pending_msg,u16,message shown at the start of the next frame
+global,DS:948B,ext_view,u8,chase view (F5) or replay/crash camera: physics traffic clock and collisions stop; cursor keys move the camera
+global,DS:948C,frozen,u8,never set (race_run writes 0): dead freeze
+global,DS:948D,pitch_rate,i16,
+global,DS:948F,pitch,i16,car nose pitch (camera 9496 = pitch + BA8F)
+global,DS:9491,view_heading,u16,body_heading & FFC0
+global,DS:9493,view_roll,u8,= BCDC on the ground
+global,DS:9494,pos_frac_x,u8,(pos_x & 7Fh) << 1
+global,DS:9495,pos_frac_z,u8,
+global,DS:94A5,cam_pitch,i16,replay camera
+global,DS:94A7,cam_y,i16,replay camera height
+global,DS:94A9,cam_dist,u16,replay camera distance
+global,DS:94AB,cam_yaw,u8,replay camera yaw (hi byte)
+global,DS:94AC,cam_elev,u8,replay camera elevation step
+global,DS:94AD,cam_roll,u8,
+global,DS:94B2,replay_state,u8,0 record; 1 play; 2 wreck animation
+global,DS:94B3,wreck_timer,u8,20 frames
+global,DS:9594,leg_gravity,u16,leg file +002: 600; gravity 900/frame; snap distance 2400; grip scale
+global,DS:95CC,shuttle_period,u8,x4 frames (seagulls)
+global,DS:95CF,sprite_hit_dist,u16,80h
+global,DS:95D1,coll_window,u16,FFh
+global,DS:95D7,wind_dir,u16,leg file +045 read as word: wind direction
+global,DS:B6CA,mouse_on,u8,F7
+global,DS:B6CB,mouse_div,u8,mouse steering divisor 2..10
+global,DS:B6CC,radio_station,u8,M key 0-2
+global,DS:B6D0,debug_flip,u8,
+global,DS:B6D2,mirror_on,u8,R key (Likely)
+global,DS:B6D3,f6_allowed,u8,set after 64 frames off road
+global,DS:B6D4,replay_paused,u8,F9
+global,DS:B6D5,replay_request,u8,F10 during a replay/message
+global,DS:B6D6,throttle,u8,0..31
+global,DS:B6D7,gear,u8,0 R 1 N 2..
+global,DS:B6D8,headlights,u8,H key (Likely)
+global,DS:B6D9,brake,u8,0/1 (Down)/4 (Space)/5
+global,DS:B6DA,wheel_centring,u8,C key; default 1
+global,DS:B6DB,knob_hidden,u8,D key (Likely)
+global,DS:B6DC,window_half,u8,F1
+global,DS:B6DD,detail,u8,F2 0-2
+global,DS:B6DE,view_dist,u16,700h/440h/300h by detail
+global,DS:B6EA,debug_keys,u8,0 in the exe and never written: S/T/N keys dead
+global,DS:B704,steer_hold,u8,keyboard steering ramp 0..2
+global,DS:B705,prev_bits,u8,control bits of the previous poll
+global,DS:B706,throttle_released,u8,Up released -> car_physics searches the cruise throttle
+global,DS:B707,clock_running,u8,set by any gear shift and on resume; clock and traffic run only while set; the crash immunity only counts down while set
+global,DS:B708,clock_frames,u8,0-4
+global,DS:B70A,clock_sub,u8,0-3
+global,DS:B70B,clock_sec,u8,
+global,DS:B70C,clock_min,u8,saturates at 59
+global,DS:B70E,frame_ticks,u8,timer ticks the previous frame took (race_run); scales the steering rate
+global,DS:B70F,radar_drawn,u8,
+global,DS:B710,radar_level,u8,0..6Fh max over police
+global,DS:B711,radar_phase,u8,
+global,DS:B78D,crashed,u8,crash latch
+global,DS:B78E,overrev_events,u8,
+global,DS:B9BB,road_mem,u16[3][4],last 3 road positions (x z y heading) every other frame
+global,DS:B9D3,return_to_road,u8,F6 request consumed by 0e12:2465
+global,DS:BA83,overhead_y,u16,deck above the car
+global,DS:BA85,ground_y,i16,height of the ground under the car (collision code)
+global,DS:BA87,ground_y_prev,u16,
+global,DS:BA89,ground_tri,u16[3],2*vertex of the ground triangle
+global,DS:BA9A,face_type_x8,u8,w3 hi & F8h of the face being drawn
+global,DS:BA9B,surface,u8,ground face type; FFh none; 1Fh finish
+global,DS:BAA6,sky_flash,u8,frames
+global,DS:BAA7,bump_frames,u8,random vertical bumps after a hit
+global,DS:BAA8,crash_flag,u8,cleared each frame; set by hard landing/water/solid hits -> crash_start
+global,DS:BAA9,crash_face,u16,FFFFh each frame; face index of a hit
+global,DS:BAAB,crash_object,u16,2*object hit (0 = scenery)
+global,DS:BAAD,invulnerable,u8,frames of no-crash after a restart; counts down on water or gear change
+global,DS:BAAE,crash_type,u8,never read
+global,DS:BC75,rain_level,u16,0/4/8
+global,DS:BC77,snow_level,u16,0/4/8
+global,DS:BC79,wind_level,u16,
+global,DS:BCA5,clocked_speed,u8,E55F at chase start (message 2Dh)
+global,DS:BCA6,tickets,u8[3],player; opponent 1; opponent 2 (20 s each)
+global,DS:BCA8,opp_stuck,u8[3],index 1..2
+global,DS:BCAA,opp_recover,u8[3],index 1..2
+global,DS:BCAC,opp_overtake,u8[3],index 1..2; 28h frames
+global,DS:BCAF,traffic_overtake,u8,shared by traffic
+global,DS:BCB0,flash_msg,u8,message posted when the sky flash ends
+global,DS:BCB1,uturn_obj,u16,2i of the police car to U-turn
+global,DS:BCB5,ticket_cooldown,u8,150 frames
+global,DS:BCB6,pullover_count,u8,30 -> ticket
+global,DS:BCB9,script_pos,u8[2],opponent script index
+global,DS:BCBB,opp_time,u8[2][3],tick sec min at finish
+global,DS:BCC1,frame8,u8,
+global,DS:BCCE,light_timer,u8,90/9 frames
+global,DS:BCCF,light_phase,u8,0-3
+global,DS:BCD4,gate_obj,u16,FFFFh none
+global,DS:BCD8,gate_pos,u8,>= 10h cars stop; >= 30h barrier sprite solid
+global,DS:BCD9,train_near,u8,
+global,DS:BCDA,train_min_d,u16,
+global,DS:BCDC,ground_roll,u8,
+global,DS:BCDD,ground_pitch,i16,
+global,DS:BCE1,pitch_shear_tab,u8[32],constant
+global,DS:BD39,frame_count,u16,
+global,DS:BD3B,crash_water,u8,
+global,DS:BD3C,water_anim,u8,
+global,DS:CC50,last_surface,u8,zone edge detector
+global,DS:CEAA,y_before,i32,pos_y at the start of the frame
+global,DS:E08C,key_code,u8,pending key for key_dispatch 0e12:0084
+global,DS:E08E,crosswind,i16,steering drift from the wind
+global,DS:E332,resist,i32,resistance force
+global,DS:E336,wind_speed,i16,
+global,DS:E33A,steer_wheel,u8,0..32 centre 16
+global,DS:E540,zone_dir,u8,
+global,DS:E548,engine_drag,i32,
+global,DS:E55F,speedo_step,u8,speed>>2 max 31 (0 in reverse)
+global,DS:E561,need_place,u8,car_place next frame
+global,DS:E5A8,drive,i32,engine drive force
+global,DS:E5AE,tach_step,u8,rpm>>5 clamped to CC76
+global,DS:E7E8,grip,u16,surface grip 125 dry road; 0 water
+global,DS:E864,mouse_x,u16,
+global,DS:E86E,mouse_y,u16,

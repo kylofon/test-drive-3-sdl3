@@ -1,0 +1,107 @@
+kind,address,name,type,notes
+func,0792:0414,race_input,far void(int phase),"phase 2: key_read + key_code_dispatch; phases 0/1: joy_read (phase 1 only if DS:B70E > 28h) + controls_update; wheel self-centring; wheel_update"
+func,0792:04ca,chase_view_exit,far void(void),"restore top bar and centre cockpit from page 1, redraw compass strip (17Ah pairs), invalidate instrument caches (E5B7 E860 CC56 CE9D B712 E562 = FFh), CC52 = CC92 = 0"
+func,0792:059a,chase_view_enter,far void(void),"music off, save top bar rows 0-15 to page 1, blank it, replay_panel_draw, DS:CC92 = 1"
+func,0792:0602,replay_panel_draw,far void(void),"grey framed panel rows 112-199, CHASE.LZ 248x64 at (56,195), CHASE CAR VIEW / INSTANT REPLAY texts and button labels"
+func,0792:0922,cockpit_setup,far void(void),"OTWCOL + <car>COL palettes, cockpit_pictures_draw(199), .ETC, marker and 6 knob masks (gfx_read_mask), cockpit copy and gauge backings to page 1, L.BOT/R.BOT, first frame, palette_apply"
+func,0792:0cec,view_first_frame,far void(void),"frame_update + frame_draw + view_present (unless chase view), page 0"
+func,0792:10a6,hud_reset_topbar,far void(void),"DS:B709 = FFh; DS:BD34 = FFFFh unless race_state == 2; page 0"
+func,0792:10c8,shifter_update,far void(void),"per frame: lever step toward DS:CC57, 16-frame hold, hide unless DS:B6DB"
+func,0792:1156,shift_lever_draw,far void(void),"save screen 248-303 x 124-171, gate copy, knob = 6 colour masks at (E56D[2s]+208, E56E[2s]+175), copy to screen"
+func,0792:1310,wheel_update,far void(void),"rim picture by DS:E33A (<8 L, 8-24 centre, >24 R) via wheel_rim_blit; erase/save/draw steering marker; tach/odometer redraw on rim change"
+func,0792:1488,wheel_rim_blit,far void(int dy int dx),"page1 (dx..dx+167, 152-dy..199-dy) -> screen (32,199); refresh lower part of tach/speedo backings"
+func,0792:155e,steer_marker_draw,far void(void),"polar(E782*(2*E33A-32), E780); 8x5 mask DS:E554 in colour E77E at (E784+px, E786-py+4)"
+func,0792:15d4,tach_draw,far void(void),"if step DS:E5AE != DS:CC56: restore backing (page1 168..), needle colour CEB4 from (CC68,CC6A) angle CC66*step-CC8A*500h len CC64"
+func,0792:16c4,odometer_draw,far void(void),"odometer rendered into the page-1 speedo backing at (CC78,CC7A) (backing coords), rolling digits DS:B719 strip; restores speedo backing and redraws speedo when DS:E55F changed"
+func,0792:18da,speedo_draw,far void(void),"needle colour CEB5 from (CC70,CC72) angle CC6E*DS:E55F-CC88*500h len CC6C; page 0"
+func,0792:1952,odometer_update,far void(void),"accumulate |DS:124E:1250| in DS:1186 u32; per DS:94B9: DS:CEA8++ (0..60, 61 -> 1 with DS:E55E++ max 99)"
+func,0792:19ca,water_overlay_start,far void(void),"WATER.LZ 160x96 on page 1 at x 0 and 160, sfx 6, first water_roll_step"
+func,0792:1a72,water_roll_step,far void(void),"page1 rows 0-95 -> view (skipping mirror x 168-255 of rows 16-31), rotate page-1 picture down 2 rows; half window variant waits 1 BIOS tick"
+func,0792:1c00,broken_glass_overlay,far void(void),"sfx 2, BROKE.LZ 320x96 over the 3D buffer with colour 0Fh transparent (0c1c:1759), 0e12:7c21, view_present"
+func,0792:1c66,cockpit_pictures_draw,far void(int bottom_y),"2.BOT at bottom_y, 1.BOT at bottom_y-44 (current page); if 199: .TOP and page 1 -> page 0; COMPASS strip to page 1 with 180h pairs (file has 17Ah)"
+func,0792:1dfe,load_opponent_pob_nonvga,far,"non-VGA only: reload opponent .POB into DS:CEBC; no-op when DS:E338 = 13h"
+func,0e12:0b1d,topbar_update,near void(void),"from frame_update (not in menu demo): race clock tick (1 s = 5 frames, only when DS:B707), then clock_draw compass_draw radar_draw; nothing in chase view or race_state != 1"
+func,0e12:0b85,clock_draw,near void(void),"m:ss with 4x5 font DS:B75B, colour CEB7, seconds at x 53/58 minutes at 41/46 (no leading zero), bottom y 13"
+func,0e12:0cbe,compass_draw,near void(void),"x = (u8)(hi(DS:9498) + DS:95BE) >> 1; copy page1 strip (x..x+23, 0..7) -> screen (8, 14); debug DS:B6EA: two digits of DS:B70E at x 10/15"
+func,0e12:0db4,radar_draw,near void(void),"level DS:B710>>4 (0-6), blink 8 frames on/off, sfx 0Eh every 16 frames; power light 284-287 x 9-10 colour CEAE, bars (294+3i, 295+3i) x 9-10 colour CEAF; blank 288-311 x 9-11"
+func,0e12:04f1,replay_panel_clear,near,"DL = 044e argument: colour 8 over 56-303 x 132-179 and 56-(DL?303:199) x 180-195"
+func,0e12:031c,key_window_size,near,"F1 (81h): toggle DS:B6DC, message 0Ah/0Bh, 0e12:409c; to half: black 0-39 and 280-319 x 16-111, 40-279 x 80-111"
+func,0e12:059c,key_replay_pause,near,"F9 (89h) during replay: toggle DS:B6D4, print Paused (DS:1ECC) / blanks (DS:1ED5) at col 17 row 19, white on 8"
+func,0e12:0269,key_lever_display,near,key 44h/64h: toggle DS:B6DB (gear lever always shown)
+func,0e12:0133,key_wheel_centering,near,"key 43h/63h: toggle DS:B6DA, message 0Eh + B6DA"
+func,0e12:0084,key_code_dispatch,far,"page 0; dispatch DS:E08C via CS:0000 (40h-7Fh) / DS:B6EF (81h-8Ah); the seed name key_dispatch at 0e12:0080 is the controls poller (call 0751)"
+func,0e12:234b,polar,far void(u16 angle u16 len),"a = (angle>>7)&1FFh; x = hi16(sin_tab[i]*len), y = hi16(sin_tab[80h-i]*len) with quadrant signs -> DS:9460/9462; 0 = up, clockwise; sin_tab CS:0FF2"
+func,1714:000e,gfx_set_page,far void(int page),"platform: DS:BD40 = page, DS:BD88 = DS:BD8C[page]; game mirrors in DS:009A"
+func,1703:0001,gfx_set_colour,far void(int c),platform: DS:BD41/BD42 = c
+func,1785:000b,gfx_fill_rect,far void(int x0 int x1 int y0 int y1),"platform: inclusive, no clipping"
+func,1818:0003,gfx_copy_rect,far void(int x0 int x1 int y0 int y1 int dx int dy_bottom int src int dst),"platform: rows copied bottom-up, dst given by its bottom-left, no clipping"
+func,16fb:0008,gfx_moveto,far void(int x int y),platform: DS:BD4B/BD4D
+func,16d9:0002,gfx_lineto,far void(int x int y),"platform: Bresenham via gfx_plot, axis-parallel via gfx_fill_clipped; end point becomes current"
+func,173c:0005,gfx_plot,far void(int x int y),platform: clipped to DS:BD53..BD51 x DS:BD57..BD55
+func,192e:0005,gfx_fill_clipped,far void(int x0 int x1 int y0 int y1),platform
+func,185f:000b,gfx_draw_mask,far void(u8 *bits int bytes_per_row int rows),"platform: 1-bit mask, first row = bottom at current y, MSB left, set bits in current colour"
+func,18b3:0004,gfx_read_mask,far void(u8 *bits int bytes_per_row int rows),platform: mask of pixels equal to the current colour (same geometry as gfx_draw_mask)
+func,16ff:000b,bios_wait_ticks,far void(int n),platform: INT 1Ah busy wait
+func,16ef:0009,mouse_set_pos,far void(int x int y),platform: INT 33h fn 4
+func,170e:0002,gfx_show_page,far void(int page),platform: display page select (DS:BD43)
+func,01f4:59ac,pic_draw,far void(u8 *pairs int count int width int x int y_bottom int ega),"VGA: 0c1c:0c45 RLE into DS:90CC[DS:009A], colour + DS:90F0"
+func,0c1c:1759,pic_draw_view,far void(u8 *pairs int count int y_bottom),"RLE 320 wide into the 3D buffer DS:90D0, colour 0Fh transparent"
+func,01f4:1864,gfx_frame,far void(int x0 int x1 int y0 int y1),rectangle outline with gfx_lineto
+func,0c1c:0733,text_colours,far void(int fg int bg),DS:90E3 = fg<<8; DS:90E1 = bg<<8 (order Likely)
+global,DS:009A,cur_page,u16,"page last selected with gfx_set_page; target of pic_draw"
+global,DS:90F0,colour_offset,u8,0 or 80h added to picture colours (car pictures 80h)
+global,DS:9460,polar_x,s16,polar result x
+global,DS:9462,polar_y,s16,polar result y (up positive)
+global,DS:E562,rim_shown,u8,"rim picture on screen 0 left 1 centre 2 right, FFh force"
+global,DS:E7EE,rim_wanted,u8,wheel_update scratch
+global,DS:E5B7,marker_pos,u8,"wheel position the steering marker is drawn at, FFh none"
+global,DS:E554,marker_mask,u8[5],8x5 steering marker glyph captured from the .ETC (colour 8Fh)
+global,DS:E090,knob_masks,u8[6][96],"32x24 knob masks for colours 0Fh,7,8,0,0Ch,4 (+80h VGA) at E090 E0F0 E150 E1B0 E210 E270"
+global,DS:CE94,lever_step,u8,current gear-lever animation step
+global,DS:CC57,lever_target,u8,target lever step (car E565[gear])
+global,DS:E5B6,lever_hold,u8,"frames the lever stays up; 1 after a draw, 10h on arrival, 0 on a gear change"
+global,DS:CC52,lever_shown,u8,gear lever on screen (area saved in page 1)
+global,DS:B6DB,lever_always,u8,show the gear lever permanently (key 44h)
+global,DS:CC56,tach_drawn,u8,"tach step drawn, FFh force"
+global,DS:E860,speedo_drawn,u8,"speedo step drawn, FFh force"
+global,DS:CE9D,odo_drawn,u8,"odometer sixtieths drawn, FFh or ^80h force"
+global,DS:CC51,odo_roll_tens,u8,roll offset 0-6 of the tens digit
+global,DS:CC8C,odo_roll_units,u8,roll offset 0-6 of the units digit
+global,DS:1186,odo_accum,u32,accumulated |velocity| (DS:1186:1188)
+global,DS:E5AE,tach_step,u8,rpm>>5 clamped to CC76 (simulation)
+global,DS:E55F,speedo_step,u8,"speed>>2, 0 reversing, max 31 (simulation)"
+global,DS:B709,clock_drawn,u8,"seconds drawn, FFh force"
+global,DS:B70B,clock_sec,u8,race clock seconds
+global,DS:B70C,clock_min,u8,race clock minutes (max 59)
+global,DS:B708,clock_frames,u8,frames in the current clock second (0-4)
+global,DS:B70A,clock_frac,u8,(f + f>>1)>>1 of clock_frames; not displayed
+global,DS:B707,clock_running,u8,race clock started (first gear change)
+global,DS:B712,compass_drawn,u8,"compass strip x drawn, FFh force"
+global,DS:95BE,leg_compass_offset,u8,leg header 02Ch added to the heading for the compass (Likely)
+global,DS:B710,radar_level,u8,radar detector strength (bars = >>4)
+global,DS:B711,radar_phase,u8,frame counter for radar blink and blip
+global,DS:B70F,radar_drawn,u8,"radar level drawn, FFh = blank phase"
+global,DS:B70E,frame_ticks,u8,timer ticks of the last frame (debug readout; steering rate)
+global,DS:B6EA,debug_mode,u8,debug keys + frame-time readout instead of the compass (no writer found)
+global,DS:B6DC,half_window,u8,3D view 240x64 (x 40-279 rows 16-79)
+global,DS:B6DA,wheel_centering,u8,wheel self-centring on
+global,DS:CC92,panel_shown,u8,chase / replay panel on screen
+global,DS:948B,chase_view,u8,external chase-car / replay camera
+global,DS:94B2,replay_playing,u8,instant replay running
+global,DS:B6D4,replay_paused,u8,F9 toggle
+global,DS:B78D,crash_active,u8,crash sequence running
+global,DS:BD3B,crash_in_water,u8,crash surface was water (0Eh)
+global,DS:BD3C,water_pending,u8,water overlay to run
+global,DS:9488,pending_message,u16,message id shown at the next race loop top
+global,DS:E330,unused_e330,u8,written 0 by cockpit_setup / race_run; never read
+global,DS:E550,pic_water,far ptr,packed WATER.LZ (EGA WATEREGA.LZ)
+global,DS:E55A,pic_broke,far ptr,packed BROKE.LZ (EGA BROKEGA.LZ)
+global,DS:CE98,pic_chase,far ptr,packed CHASE.LZ
+global,DS:E5BC,pic_compass,far ptr,packed COMPASS.LZ
+global,DS:CC5C,pic_file_buf,far ptr,7810h-byte buffer for packed car pictures
+global,DS:B75B,digit_font,u8[50],"4x5 digits, 1 byte per row, bottom row first"
+global,DS:B719,odo_digit_strip,u8[66],"3x5 digits every 6 bytes (bottom row first), wrap 0 at B755"
+global,DS:16DA,message_table,u16[52],message_box text pointers
+global,DS:BD4B,gfx_cur_x,s16,library current point x
+global,DS:BD4D,gfx_cur_y,s16,library current point y
+global,DS:BD41,gfx_colour,u8,library current colour

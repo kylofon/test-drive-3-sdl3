@@ -1,14 +1,61 @@
 kind,address,name,type,owner,other_names,notes
-func,0000:0000,main,void(void),seed,,"game state machine on DS:0086 (1 title, 2 protection check, 4 menus, 5 race legs, 3/6 results)"
-func,0000:092a,config_load,far,descriptions,,"reads TD3.CFG (3 u16: video, audio -> DS:0096, midi flag -> DS:0098); if missing asks on the text screen and optionally writes it (wb+)"
-func,01f4:0a96,top_score_enter,far,descriptions,,"name entry, inserts DS:09DA score, DS:0AFE car and name into the top-7 table, then hi_write"
-func,01f4:0f4e,top_scores_screen,far,descriptions,,TOPSCOR*.LZ; prints DS:1FDE name block and the 7 scores DS:1FC2 with car names
-func,01f4:12d4,print_score,far void(u32),descriptions,,8-digit decimal without leading zeros
+func,0000:0000,main,void(void),game_flow,,"state machine on DS:0086: FFh config, 1 title, 2 protection check, 3 top scores, 4 menus, 5 race (legs x players, results math), 6 = between legs | game state machine on DS:0086 (1 title, 2 protection check, 4 menus, 5 race legs, 3/6 results)"
+func,0000:07e4,exit_to_dos,far void(void),game_flow,,"snd_shutdown, mem_free_all, gfx 1736(1), restore BIOS mode DS:E862, 16fc:000b, kbd_restore, exit(0)"
+func,0000:081c,harderr_handler,far void(u16 deverr u8 errcode),game_flow,,"INT 24h handler installed with _harderr: code 0 -> message 23h 'Write Protect?', 2 -> 24h 'Drive Not Ready?', then _hardresume(1 = retry); other codes -> fatal_exit(5)"
+func,0000:0874,fatal_exit,far void(int code),game_flow,,"shutdown + text message: 1 RAM (DS:0106+0137), 2 file open (015B), 3 .HI write (0189), 5 hardware (01BB), else 01E9; exit(code)"
+func,0000:092a,config_load,far void(void),game_flow,,"reads TD3.CFG (3 u16: video, audio -> DS:0096, midi flag -> DS:0098); if missing asks on the text screen and optionally writes it (wb+) | reads TD3.CFG or asks on the text screen (video 1-4, sound 1-5, save Y/N), sets DS:E338 = DS:00EA[video], DS:0096, DS:0098; sets the graphics mode, allocates 2 pages (8 -> fatal 1), DS:90CC/90CE = page segments"
+func,0000:0ce6,cfg_show_video_choice,far void(char n),game_flow,,text-mode digit at col 20h row 8
+func,0000:0d0e,cfg_show_sound_choice,far void(char n),game_flow,,text-mode digit at col 20h row 11h
+func,0000:0d36,cfg_show_yes_no,far void(int yes),game_flow,,text-mode 'N' (DS:0442) / 'Y' (DS:0444) at col 2Ch row 15h
+func,0000:0d62,pal_load,far void(char *name),game_flow,,112 colours (336 bytes) -> DS:0B6A palette buffer at colour 16 + DS:90F0; applied at once in VGA unless game_state == 5
+func,0000:0df6,pal_load_32,far void(char *name),game_flow,,32 colours (96 bytes) -> palette buffer at colour 48 + DS:90F0 (car SIC.BIN)
+func,0000:0e74,file_load_near,far void(char *name u8 *dst),game_flow,,"archive_open, read whole entry (size-1 when archived, file size otherwise) to a DS buffer"
+func,0000:0ee0,file_load_far,far void(char *name void far *dst),game_flow,,"same as file_load_near into a far buffer; sets DS:E86A = bytes read, DS:E86C = 0"
+func,0000:0f58,random,far u16(void),game_flow,,seed DS:00D2 (u32) = seed*41C64E6Dh + 3039h; returns (seed >> 16) & 7FFFh (not the MSC rand constants)
+func,0000:0f80,key_poll,far void(u16 *key),game_flow,,"takes DS:915B (or joystick keys), handles the hotkeys Esc/Ctrl-P/Q/S/E/J/K/A/D, stores the result in *key and DS:E08C; any key -> DS:008C = 1 (hud: key_read, platform: get_key)"
+func,0000:11d2,mem_alloc_all,far void(void),game_flow,,allocates the 13 far buffers + a 300h-paragraph DOS block; any failure -> fatal_exit(1) (the 'RAM check')
+func,0000:1442,mem_free_all,far void(void),game_flow,,frees the buffers of mem_alloc_all and the DOS block
+func,0000:1518,nop_1518,far void(void),game_flow,,empty
+func,0000:151a,nop_151a,far void(void),game_flow,,empty
+func,0000:151c,archive_open,far int(char *name),game_flow,,"looks the name (without drive) up in the DS:049E directory; builds A:DATAx.DAT / car .DAT / scene .DAT, opens it (prompting for the disk until it opens), seeks to the entry, DS:E86A:E86C = size; returns handle or 0 if not archived"
+func,0000:16d0,name_hash_h1,far int(char *s int mul),game_flow,,h = h*mul + c over the characters from last to first (signed chars)
+func,0000:171a,name_hash_h2,far int(char *s),game_flow,,sum c[i]*i over all characters except the last
+func,0000:1760,name_hash,far u32(char *s),game_flow,,"(h1(s,101h) << 16) | h2(s), the archive directory key (FORMATS.md)"
+func,0000:179c,message_box,far void(int id),game_flow,,"message DS:16DA[id] in a grey box at y 71h-85h; per-id wait/prompt behaviour (Y/N, drive letter, steering 1-9, joystick calibration...)"
+func,0000:1e44,joystick_keys,far u16(u16 *key),game_flow,,"if DS:0092: read joystick, button -> 0Dh, else direction -> DS:00AA[DS:947B & 0Fh] (arrow codes)"
+func,0000:1ea4,joystick_direction,far void(void),game_flow,,"widens the calibration min/max (DS:00BC/00C0, 00C6/00CA) and adds direction bits to DS:947B: 8 right, 4 left, 2 down, 1 up"
+func,01f4:000e,player_rec_load,far void(void),game_flow,,copies 25 bytes of player DS:09C5 (1-based) from DS:E7F4 + 1Bh*(p-1) to DS:09C6
+func,01f4:003e,player_rec_save,far void(void),game_flow,,copies DS:09C6 (25 bytes) back to the player's record
+func,01f4:0070,title_sequence,far int(void),game_flow,,"Accolade logo + light sweep, TITLE1/2 (mirrored), TITLEANI/LET/L2/CAR animation, credits pictures and the credits text; any key aborts; returns 0"
+func,01f4:0a96,top_score_enter,far void(void),game_flow,,"name entry, inserts DS:09DA score, DS:0AFE car and name into the top-7 table, then hi_write | name entry (14 chars), 'TJL' cheat flag DS:9485, inserts DS:09DA / DS:0AFE / name into the top-7 table, hi_write"
+func,01f4:0f4e,top_scores_screen,far int(int unused),game_flow,,"TOPSCOR*.LZ; prints DS:1FDE name block and the 7 scores DS:1FC2 with car names | TOPSCORA/B/C.LZ + TOPCOLR.BIN; title, scene name, 7 scores + car names + hi_names; your score if 1 player; waits for a key; clears DS:09DA"
+func,01f4:12d4,print_score,far void(u32 score),game_flow,,8-digit decimal without leading zeros | 8-digit decimal without leading zeros (digits DS:EA7A.. -> DS:EA84 + 80h) printed with print_text
+func,01f4:144c,main_menu,far int(void),game_flow,,"SELECT.LZ screen with a rotating 3D car (frame_update/frame_draw with DS:09C4 = 1); arrows move DS:E5AC (0 = race, 1 options, 2 car, 3 course, 4 play disk), Enter returns it"
+func,01f4:1864,gfx_frame,far void(int x0 int x1 int y0 int y1),game_flow,,rectangle outline (name from hud.md) | rectangle outline with gfx_lineto
+func,01f4:18b0,menu_box_draw,far void(int item int colour int colour2),game_flow,,"frame around menu item (0 = big top box, 1-4 = bottom boxes 80 px apart); colour2 == 0 adds a colour-1 shadow"
+func,01f4:19f4,credits_text,far int(char *list),game_flow,,"prints each AAh-ended string at (y 3, col 1) for 27h x 2 BIOS ticks until a 00 00 pair; key aborts"
+func,01f4:1a82,print_records,far int(u8 *s int off),game_flow,,"prints records {col,row,text} ended by 80h (next record) or AAh (end); returns the offset after AAh"
+func,01f4:1ad6,print_text,far int(u8 *s int off),game_flow,,prints characters until a byte >= 80h at the current text position; returns offset after it
+func,01f4:1b0a,print_record,far int(u8 *s int off),game_flow,,"one {col,row,text} record; returns offset after its terminator"
+func,01f4:1b58,print_chars,far void(u8 *s int n),game_flow,,prints n characters
+func,01f4:1b8e,wait_key,far int(int n),game_flow,,"n-1 x (delay 2 BIOS ticks, random, key_poll); returns the key (low byte) or n on timeout; n = 0 waits forever"
+func,01f4:1be2,screen_present,far void(void),game_flow,,active page 0 + dissolve of page 1 onto the screen (0c1c:08c5)
+func,01f4:1c00,ega_pal_black,far void(void),game_flow,,clears DS:E788[32]; non-VGA: EGA palette from it (all black)
+func,01f4:1c34,ega_pal_restore,far void(void),game_flow,,non-VGA: EGA palette from DS:0E6A
+func,01f4:1c48,pal_apply,far void(void),game_flow,,VGA: upload the DS:0B6A palette buffer (0c1c:0c2a)
+func,01f4:1c56,pal_black,far void(void),game_flow,,VGA: all 256 colours black (0c1c:0c16)
+func,01f4:1c64,pal_fade_in,far void(void),game_flow,,VGA: fade in over 16 steps (0c1c:0be5)
+func,01f4:1c72,pal_fade_out,far void(void),game_flow,,VGA: fade out over 16 steps (0c1c:0b5b)
+func,01f4:1c80,pal_fade_out_low,far void(void),game_flow,,VGA: fade out colours 0-127 only (0c1c:0bb7)
+func,01f4:1c8e,page_keep_high,far void(void),game_flow,,VGA: on the active page every pixel < 80h becomes 0 (0c1c:0b89)
+func,01f4:1c9c,ega_pal_init,far void(void),game_flow,,Tandy (mode 9): remap DS:0E6A to 4-bit values; EGA/Tandy: set the palette registers
 func,01f4:1cf0,snd_init,far,sound,,"once: sfx_init, music_init with DS:0096, DS:0096 = C5E3, timer_install; DS:009C = 1"
 func,01f4:1d22,music_for_state,far,sound,,(arg): plays the music of main state DS:0086 (THEME / menu buffer / scene A-C by arg)
 func,01f4:1e48,music_play_theme,far,sound,,"stop, load THEME.MUS into DS:E7F0, play"
 func,01f4:1e9a,snd_shutdown,far,sound,,"sfx_play(0), music_stop(0), timer_restore; DS:009C = 0"
-func,01f4:1ec2,copy_protection_check,far,seed,,"returns 0 = passed; check patched out with NOPs in this copy, dead code follows (01f4:1ed7-01f4:262a)"
+func,01f4:1ec2,copy_protection_check,far int(void),game_flow,,"returns 0 = passed; the check is patched out with NOPs in this copy, dead code follows (01f4:1ed7-01f4:262a) | returns 0 = passed; check patched out with NOPs in this copy, dead code follows (01f4:1ed7-01f4:262a)"
+func,01f4:262a,protection_picture_draw,far void(int n int x),game_flow,,dead code (protection): copies a 64x24 cell n of page 1 (x 80h+64*(n/6)) to page 0
+func,01f4:26fe,playdisk_prompt,far void(void),game_flow,,"message 13h (drive letter), 10h (insert disk) until playdisk_load succeeds, then playdisk_screen"
 func,01f4:2736,playdisk_write,far,descriptions,,"verifies the disk (2812) then writes PLAYDISK.DAT (179 bytes: DS:0A78, 09E0, 0A34, 0AFE, 0B06, 09C2)"
 func,01f4:2812,playdisk_verify,far,descriptions,,"loops until PLAYDISK.DAT label (12h bytes) equals DS:0A78, prompting 'Insert your PLAY DISK'; copies label to DS:190C"
 func,01f4:28ae,playdisk_load,far int(void),descriptions,,"reads PLAYDISK.DAT into DS:0A78/09E0/0A34/0AFE/0B06/09C2, then car_lst_load(DS:0AFE) and scene_lst_load(DS:0B02); 0 = ok"
@@ -26,71 +73,307 @@ func,01f4:373e,scene_prev,far int(int),descriptions,,previous loadable scene slo
 func,01f4:379c,scene_select_draw,far,descriptions,,"banner .ICN (pairs DS:0B16), first leg pictures (DS:0B1A/0B1C/0B1E), last leg pictures (DS:0B0B*6+0B14..)"
 func,01f4:3b2e,options_screen,far,descriptions,,"skill level DS:0B04 (0-8, <3 auto-shift) and race against DS:0B08/0B09; writes PLAYDISK.DAT on change"
 func,01f4:3f8e,leg_banner_draw,far,descriptions,,"picture set of leg DS:0B0A: <scene><DS:0B1E+6*leg>.COL, .BLZ (pairs 0B1C+6*leg), .ALZ (0B1A+6*leg)"
+func,01f4:40ce,race_status_screen,far void(void),game_flow,,"after a leg with several players or computer cars: RACE STATUS page, each car's leg and cumulative records, winner / tie / lost message"
+func,01f4:470e,results_frame_draw,far void(int status_page),game_flow,,"page 1: black bottom, grey panel 4Bh-BDh with frame lines, DETAIL1/2.LZ (units), boxes; 1 = race status layout, 0 = scorecard layout"
 func,01f4:4954,leg_results,far,descriptions,,"end-of-leg screen: merges DS:09C6 into .HI route record and DS:09D0 into cumulative record (51e2), writes .HI when improved, prints leg/route names from DS:E5C0"
 func,01f4:4d7e,draw_leg_record,far void(int x int y u8 *rec u8 flags),descriptions,,"prints m:ss.hh, average speed (x8/5 for metric cars, DS:94B8=0) and 32-bit score of an 8-byte record"
 func,01f4:51e2,leg_record_merge,far int(u8 *new u8 *best),descriptions,,"keeps best time (1), best average speed (2), best score (4); returns the improved bits"
 func,01f4:53c4,shared_scene_load,far int(void),world,,once: SCENETTT/SCENETTO/SCENETTP.BIN SCENETTA.DAT SCENETT1.DAT + menu pictures
-func,0792:000c,race_run,far,seed,,"race runner: loads the stage, per-frame loop, returns when DS:008A = 3"
-func,0792:0414,race_input,far void(int phase),seed,,key handling between frame phases 0/1/2
-func,0792:0d2e,stage_load_objects,far,objects,stage_load,"loads <scene>T.BIN -> DS:E770, O.BIN -> DS:E54C and P.BIN -> DS:CE9E when DS:0B15 = 0, car .POB -> DS:CEA4, opponents' .POB -> DS:CEBC / DS:D7A4 | loads leg sprite .DAT (DS:2500) T.BIN O.BIN P.BIN car POBs; calls 0792:0fce 0e12:2789 0e12:255e"
-func,0792:0fce,leg_map_load,far void(void),world,,loads <scene><'A'+leg>.DAT to DS:9592; EGA dither table B4B9; 95C7=0 darkening
-func,0792:1156,shift_lever_draw,far,descriptions,,"knob at (DS:E56D[2*step]+208, DS:E56E[2*step]+175)"
-func,0792:155e,steer_marker_draw,far,descriptions,,"marker at angle DS:E782*(2*DS:E33A-32), radius DS:E780, centre DS:E784/E786, colour DS:E77E"
-func,0792:15d4,tach_draw,far,descriptions,,"needle DS:CC64 length, angle DS:CC66*(rpm>>5) - DS:CC8A*500h, centre DS:CC68/CC6A, colour DS:CEB4"
-func,0792:16c4,odometer_draw,far,descriptions,,at DS:CC78/CC7A; colours DS:CEB2/CEB3; rolling last digit DS:CEA8 (0-59)
-func,0792:18da,speedo_draw,far,descriptions,,"needle DS:CC6C length, angle DS:CC6E*(speed>>2) - DS:CC88*500h, centre DS:CC70/CC72, colour DS:CEB5"
-func,0792:1952,odometer_update,far,descriptions,,"accumulates |velocity| into DS:1186; each DS:94B9 units -> DS:CEA8+1, 60 -> DS:E55E+1 (max 99)"
-func,0792:1dfe,load_opponent_pob_nonvga,far,objects,,non-VGA only: reload opponent .POB into DS:CEBC
-func,0c1c:0e98,kbd_isr,interrupt,seed,,"INT 9 handler: reads port 60h, acks 61h"
-func,0c1c:109f,timer_install,far,seed,,"PIT ch0 divisor 2000h (145.6 Hz), hooks INT 8"
-func,0c1c:10cf,timer_restore,far,seed,,PIT back to 18.2 Hz
-func,0c1c:10e8,timer_isr,far,sound,,"INT 8 at 145.65 Hz: snd_tick, DS:00A0++, chain to the old INT 8 every 8th tick"
+func,01f4:55f0,opponent_results,far void(void),game_flow,,"computer cars 1 and 2 (records DS:E80F / DS:E82A): average speed, leg score and cumulative time/distance/average/score, same arithmetic as main"
+func,01f4:59ac,pic_draw,far void(u8 *pairs int npairs int width int x int ybottom int flag),game_flow,,"VGA: rle_draw_page 0c1c:0c45 (flag unused); else rle_draw_dither 0c1c:1b8a (name from hud.md) | VGA: 0c1c:0c45 RLE into DS:90CC[DS:009A], colour + DS:90F0"
+func,0792:000c,race_run,far void(void),game_flow,,"one leg for one player: stage load, cockpit build, frame loop (frame_update, race_input 0, frame_draw, race_input 1, HUD, blit, race_input 2, surface events), >= 5 ticks per frame; returns when DS:008A = 3 | race runner: loads the stage, per-frame loop, returns when DS:008A = 3"
+func,0792:0414,race_input,far void(int phase),game_flow,,phase 0/1: joystick keys (phase 1 only when the last frame took >= 29h ticks) + key_dispatch; phase 2: key_poll + 0e12:0084; then wheel auto-centring and 0792:1310 | phase 2: key_read + key_code_dispatch; phases 0/1: joy_read (phase 1 only if DS:B70E > 28h) + controls_update; wheel self-centring; wheel_update | key handling between frame phases 0/1/2
+func,0792:04ca,chase_view_exit,far void(void),game_flow,,"back to the cockpit view: music, top bar and cockpit from page 1, compass strip, HUD caches = FFh (name from hud.md) | restore top bar and centre cockpit from page 1, redraw compass strip (17Ah pairs), invalidate instrument caches (E5B7 E860 CC56 CE9D B712 E562 = FFh), CC52 = CC92 = 0"
+func,0792:059a,chase_view_enter,far void(void),game_flow,,"music off, save top bar rows 0-15 to page 1, blank them, replay_panel_draw, DS:CC92 = 1 (name from hud.md) | music off, save top bar rows 0-15 to page 1, blank it, replay_panel_draw, DS:CC92 = 1"
+func,0792:0602,replay_panel_draw,far void(void),game_flow,,"CHASE.LZ panel rows 70h-C7h, CHASE CAR VIEW / INSTANT REPLAY + button and viewpoint labels; message 17h when a replay starts (name from hud.md) | grey framed panel rows 112-199, CHASE.LZ 248x64 at (56,195), CHASE CAR VIEW / INSTANT REPLAY texts and button labels"
+func,0792:083c,car_leg_reset,far void(void),game_flow,,"start or restart of a leg: clear replay buffer, physics state, wheel 16, heading and 32-bit position from the start object, eye height; music"
+func,0792:0922,cockpit_setup,far void(void),game_flow,,"(hud) palettes OTWCOL + <car>COL, cockpit pictures, .ETC and knob masks, backings, L/R.BOT, first frame | OTWCOL + <car>COL palettes, cockpit_pictures_draw(199), .ETC, marker and 6 knob masks (gfx_read_mask), cockpit copy and gauge backings to page 1, L.BOT/R.BOT, first frame, palette_apply"
+func,0792:0cec,view_first_frame,far void(void),game_flow,,"frame_update, frame_draw, view_present unless chase view, page 0 (name from hud.md) | frame_update + frame_draw + view_present (unless chase view), page 0"
+func,0792:0d2e,stage_load_objects,far void(void),game_flow,stage_load,"leg start: 3D window geometry, reset clocks/odometer, race_state 1; loads <scene>1.DAT sprites, leg map, T/O/P.BIN, car .POB, opponents' names and .POB; leg_state_reset; fade out (alias stage_load) | loads <scene>T.BIN -> DS:E770, O.BIN -> DS:E54C and P.BIN -> DS:CE9E when DS:0B15 = 0, car .POB -> DS:CEA4, opponents' .POB -> DS:CEBC / DS:D7A4 | loads leg sprite .DAT (DS:2500) T.BIN O.BIN P.BIN car POBs; calls 0792:0fce 0e12:2789 0e12:255e"
+func,0792:0fce,leg_map_load,far void(void),game_flow,,"loads <scene><'A'+leg>.DAT to DS:9592; no computer cars -> DS:A47B = 2Fh, DS:A47D = 22AFh; colour-pair fix-ups | loads <scene><'A'+leg>.DAT to DS:9592; EGA dither table B4B9; 95C7=0 darkening"
+func,0792:10a6,hud_reset_topbar,far void(void),game_flow,,DS:B709 = FFh; DS:BD34 = FFFFh unless race_state 2; page 0 (name from hud.md) | DS:B709 = FFh; DS:BD34 = FFFFh unless race_state == 2; page 0
+func,0792:10c8,shifter_update,far void(void),hud,,"per frame: lever step toward DS:CC57, 16-frame hold, hide unless DS:B6DB"
+func,0792:1156,shift_lever_draw,far void(void),hud,,"knob at (DS:E56D[2*step]+208, DS:E56E[2*step]+175) | save screen 248-303 x 124-171, gate copy, knob = 6 colour masks at (E56D[2s]+208, E56E[2s]+175), copy to screen"
+func,0792:1310,wheel_update,far void(void),hud,,"rim picture by DS:E33A (<8 L, 8-24 centre, >24 R) via wheel_rim_blit; erase/save/draw steering marker; tach/odometer redraw on rim change"
+func,0792:1488,wheel_rim_blit,far void(int dy int dx),hud,,"page1 (dx..dx+167, 152-dy..199-dy) -> screen (32,199); refresh lower part of tach/speedo backings"
+func,0792:155e,steer_marker_draw,far void(void),hud,,"marker at angle DS:E782*(2*DS:E33A-32), radius DS:E780, centre DS:E784/E786, colour DS:E77E | polar(E782*(2*E33A-32), E780); 8x5 mask DS:E554 in colour E77E at (E784+px, E786-py+4)"
+func,0792:15d4,tach_draw,far void(void),hud,,"needle DS:CC64 length, angle DS:CC66*(rpm>>5) - DS:CC8A*500h, centre DS:CC68/CC6A, colour DS:CEB4 | if step DS:E5AE != DS:CC56: restore backing (page1 168..), needle colour CEB4 from (CC68,CC6A) angle CC66*step-CC8A*500h len CC64"
+func,0792:16c4,odometer_draw,far void(void),hud,,"at DS:CC78/CC7A; colours DS:CEB2/CEB3; rolling last digit DS:CEA8 (0-59) | odometer rendered into the page-1 speedo backing at (CC78,CC7A) (backing coords), rolling digits DS:B719 strip; restores speedo backing and redraws speedo when DS:E55F changed"
+func,0792:18da,speedo_draw,far void(void),hud,,"needle DS:CC6C length, angle DS:CC6E*(speed>>2) - DS:CC88*500h, centre DS:CC70/CC72, colour DS:CEB5 | needle colour CEB5 from (CC70,CC72) angle CC6E*DS:E55F-CC88*500h len CC6C; page 0"
+func,0792:1952,odometer_update,far void(void),hud,,"accumulates |velocity| into DS:1186; each DS:94B9 units -> DS:CEA8+1, 60 -> DS:E55E+1 (max 99) | accumulate |DS:124E:1250| in DS:1186 u32; per DS:94B9: DS:CEA8++ (0..60, 61 -> 1 with DS:E55E++ max 99)"
+func,0792:19ca,water_overlay_start,far void(void),game_flow,,"(hud) WATER.LZ on page 1, sound 6, first water_roll_step; called by race_run on a crash into water | WATER.LZ 160x96 on page 1 at x 0 and 160, sfx 6, first water_roll_step"
+func,0792:1a72,water_roll_step,far void(void),game_flow,,"(hud) one step of the rolling water picture; half-window variant waits 1 BIOS tick | page1 rows 0-95 -> view (skipping mirror x 168-255 of rows 16-31), rotate page-1 picture down 2 rows; half window variant waits 1 BIOS tick"
+func,0792:1c00,broken_glass_overlay,far void(void),game_flow,,"(hud) sound 2, BROKE.LZ over the 3D buffer (colour 0Fh transparent), view_present | sfx 2, BROKE.LZ 320x96 over the 3D buffer with colour 0Fh transparent (0c1c:1759), 0e12:7c21, view_present"
+func,0792:1c66,cockpit_pictures_draw,far void(int ybottom),game_flow,,"(hud) 2.BOT, 1.BOT (+ .TOP and page copy when C7h), COMPASS strip | 2.BOT at bottom_y, 1.BOT at bottom_y-44 (current page); if 199: .TOP and page 1 -> page 0; COMPASS strip to page 1 with 180h pairs (file has 17Ah)"
+func,0792:1dfe,load_opponent_pob_nonvga,far,hud,,non-VGA only: reload opponent .POB into DS:CEBC; no-op when DS:E338 = 13h | non-VGA only: reload opponent .POB into DS:CEBC
+func,0977:0008,car_physics,far void(void),simulation,,per frame from frame_update unless frozen/replay: engine torque/drag/resistance; speed; ground contact and gravity; grip/skid; steering; gauges; rev limit (compiled C)
+func,0ab4:000a,nop_far,void(void),platform,,empty; called by get_key
+func,0ab4:000f,lzw_alloc,int(void),platform,,"DOS 48h 300h paragraphs -> DS:16B8, DS:E7DC far ptr; also the mirror buffer"
+func,0ab4:0034,lzw_free,void(void),platform,,DOS 49h DS:16B8
+func,0ab4:0047,lzw_decode,void(void far *src void far *dst),platform,,"LZW 9-12 bits, 100h clear, 101h end; sets DS:BD3F = 1"
+func,0ab4:006a,lzw_decode_body,far,platform,,body without reset (fall-through only)
+func,0ab4:0140,lzw_fill_input,near,platform,,copy 400h source bytes to DS:12B4
+func,0ab4:015c,lzw_get_code,near,platform,,next code with input window refill
+func,0ab4:01ca,lzw_reset_width,near,platform,,"nbits 9, maxcode 200h, next 102h"
+func,0ab4:01dd,lzw_out,near,platform,,*dst++ = AL
+func,0ab4:01e9,lzw_idx3,near,platform,,BX *= 3
+func,0ab4:01f0,lzw_add_entry,near,platform,,"dict[next] = {old, firstchar}; next++"
+func,0ab4:120f,replay_clear,far void(void),simulation,,zero the ring buffer CS 0ab4:020F (800h words)
+func,0ab4:1220,replay_update,far void(void),simulation,,"per frame: record ring buffer (state 0), play back (1), wreck animation (2)"
+func,0ab4:1460,debris_sprites,near (BX AX DX CX),simulation,,3 debris sprite instances ids 8 7 6
+func,0ab4:14b9,replay_play_frame,near void(void),simulation,,read one recorded frame into the sprite/object tables
+func,0ab4:1544,replay_rec_objects,near (BX index),simulation,,record visible moving objects (9 words each)
+func,0ab4:1604,replay_play_objects,near (BX index),simulation,,read object records until FFFFh
+func,0c1c:0662,enable_interrupts,void(void),platform,,sti; from INT 24h handler 0000:081c
+func,0c1c:0664,joy_read_raw,u16(void),platform,,port 201h axes -> DS:00C2/00CC unless a tick occurred; returns (~port)&30h
+func,0c1c:06d8,joy_read,u16(void),platform,,joy_read_raw + clamp to 4*centre
+func,0c1c:0702,pit_random,int(int add),platform,,PIT ch0/ch2 sum; no callers
+func,0c1c:071c,far_normalize,u32(u16 off u16 seg),platform,,seg + off/16 : 0; no callers
+func,0c1c:0733,text_set_colours,void(int fg int bg),platform,text_colours,DS:90E3 = fg<<8; DS:90E1 = bg<<8 (order Likely) | DS:90E3 = fg<<8; DS:90E1 = bg<<8
+func,0c1c:074c,text_goto_cell,void(int row int col),platform,,"DS:90E7 = row*8, DS:90E5 = col*8"
+func,0c1c:076b,text_goto,void(int y int col),platform,,"DS:90E7 = y, DS:90E5 = col*8"
+func,0c1c:0784,text_draw_char,void(char *c),platform,,proportional 8x8 glyph from CS:0262 + 8c; opaque bg unless DS:90E0
+func,0c1c:084e,dos_seek,int(int fh u16 lo u16 hi),platform,,INT 21h 4200h; 1 ok 0 error
+func,0c1c:0868,dos_open_read,int(char *name),platform,,INT 21h 3D00h; handle or -1
+func,0c1c:087a,dos_file_size,u16(int fh),platform,,low word of size; rewinds
+func,0c1c:08a0,dos_read,u16(void far *buf u16 n int fh),platform,,INT 21h 3Fh
+func,0c1c:08b9,dos_close,void(int fh),platform,,INT 21h 3Eh
+func,0c1c:08c5,dissolve_page1_to_0,void(void),platform,,"64 steps (8x8 ordered), 1 per tick, abort on DS:008C"
+func,0c1c:0aa5,dissolve_poll,near,platform,,rand(); if DS:009F get_key(&DS:90DA) else DS:008C = 0
+func,0c1c:0ae0,dac_upload_256,near,platform,,"CS:0002[768] -> DAC, 32 colours per vblank sync"
+func,0c1c:0b1d,dac_upload_128,near,platform,,DAC colours 0-127
+func,0c1c:0b5b,pal_fade_out,void(void),platform,,"16 uploads, (c*l+8)>>4, l = 15..0"
+func,0c1c:0b89,page_clear_low_colours,void(void),platform,,page DS:009A: bytes < 80h := 0
+func,0c1c:0bb7,pal_fade_out_low,void(void),platform,,fade out colours 0-127
+func,0c1c:0be5,pal_fade_in,void(void),platform,,"16 uploads, l = 1..16"
+func,0c1c:0c16,pal_black,void(void),platform,,upload 768 zeros
+func,0c1c:0c2a,pal_set,void(void),platform,,upload DS:0B6A
+func,0c1c:0c45,rle_draw_page,void(u8 *pairs int npairs int width int x int y_bottom),platform,,"(colour+DS:90F0, count) runs into page DS:009A, bottom-up"
+func,0c1c:0e2d,kbd_install,void(void),platform,,hooks INT 9 -> 0c1c:0e98; DS:009D = 1
+func,0c1c:0e7d,kbd_restore,void(void),platform,,restores INT 9 if DS:009D
+func,0c1c:0e98,kbd_isr,interrupt,platform,,"INT 9: -> DS:915B key, DS:915C dir bits, DS:9153 ctrl; own lock/LED handling; no BIOS chain | INT 9 handler: reads port 60h, acks 61h"
+func,0c1c:109f,timer_install,far,platform,,"PIT ch0 divisor 2000h (145.65 Hz), hooks INT 8; its DS:C5E4 store hits 185f:01b4 (DS = CS bug) | PIT ch0 divisor 2000h (145.6 Hz), hooks INT 8"
+func,0c1c:10cf,timer_restore,far,platform,,PIT back to 18.2 Hz and old INT 8 | PIT back to 18.2 Hz
+func,0c1c:10e8,timer_isr,far,platform,,"INT 8: snd_tick, DS:00A0++, chain old INT 8 every 8th tick | INT 8 at 145.65 Hz: snd_tick, DS:00A0++, chain to the old INT 8 every 8th tick"
 func,0c1c:1110,sfx_play,far,sound,,(id): far C wrapper of sfx_play_ax
 func,0c1c:111d,sfx_play_ax,far,sound,,"AX = effect id (0 = stop all, |80h = stop id): checks sound on/replay/effects off, priority DS:915E, script DS:918E"
-func,0e12:0080,key_dispatch,far,seed,,"dispatch key code DS:E08C: 40h..7Fh via CS:0000 table, 81h..8Ah via DS:B6EF"
-func,0e12:0156,gear_up,near,descriptions,,DS:B6D7 += 1 up to DS:E564; sets throttle DS:B6D6 from DS:1232
-func,0e12:0188,gear_up_gate,near,descriptions,,up-shift across lever ranges when DS:E5A5 > 1 (CERV)
-func,0e12:01c5,gear_lever_target,far,descriptions,,DS:CC57 = lever step DS:E565[gear]
-func,0e12:01d8,gear_down,near,descriptions,,DS:B6D7 -= 1; throttle from DS:1234
-func,0e12:0229,gear_down_gate,near,descriptions,,down-shift across lever ranges when DS:E5A5 > 1
-func,0e12:095a,auto_shift,near,descriptions,,auto-shift on DS:120A (up) / DS:120C (down)
-func,0e12:23b1,grip_yaw_limit,far uint(int grip),descriptions,,grip * DS:1200 / 4 * DS:E7E8 / 250 * DS:1238 / speed DS:1296 / 2 (7FFFh when speed is too low)
+func,0c1c:11f7,rect_save,void(int x0 int x1 int y0 int y1),platform,,page DS:009A rect -> DS:90D0 buffer (packed rows)
+func,0c1c:1303,rect_restore,void(int x0 int x1 int y0 int y1),platform,,inverse of rect_save
+func,0c1c:13d8,view_present,void(void),platform,,"per race frame: mirror_present, then 3D buffer DS:90D0 -> page 0 with mirror hole"
+func,0c1c:15c7,page_mirror_left_half,void(void),platform,,page DS:009A: (319-x) := (x) for x < 160
+func,0c1c:16f8,ega_shift_copy,near,platform,,EGA/Tandy helper
+func,0c1c:170a,ega_restore_rows,near,platform,,EGA path of rect_restore
+func,0c1c:1759,rle_draw_viewbuf,void(u8 *pairs int npairs int y_bottom),platform,pic_draw_view,"RLE 320 wide into the 3D buffer DS:90D0, colour 0Fh transparent | 320-wide runs into DS:90D0, colour 0Fh transparent"
+func,0c1c:17cd,mirror_present,near,platform,,waits vertical retrace; copies mirror DS:90D2 to screen x 168-255 rows 11-29
+func,0c1c:1930,view_present_ega,near,platform,,EGA path of view_present
+func,0c1c:19e4,ega_copy_planes,near,platform,,EGA helper
+func,0c1c:1b6f,ega_gc_setup,near,platform,,EGA helper
+func,0c1c:1b8a,rle_draw_dither,void(u8 *pairs int npairs int width int x int y int cont),platform,,EGA/Tandy picture draw with error diffusion (not VGA)
+func,0c1c:1e87,dither_put,near,platform,,EGA/Tandy pixel writer
+func,0c1c:1f32,print_text_bios,void(char *s int col int row),platform,,INT 10h AH=2/9 text output (setup screen and fatal messages)
+func,0e12:0080,controls_poll_far,far void(void),simulation,key_dispatch,"dispatch key code DS:E08C: 40h..7Fh via CS:0000 table, 81h..8Ah via DS:B6EF | call 0e12:0751; retf: far stub of controls_poll used by race_input(0/1); the seed name key_dispatch belongs to 0e12:0084"
+func,0e12:0084,key_dispatch,far void(void),simulation,key_code_dispatch,page 0; dispatch DS:E08C via CS:0000 (40h-7Fh) / DS:B6EF (81h-8Ah); the seed name key_dispatch at 0e12:0080 is the controls poller (call 0751) | dispatch DS:E08C: 40h-7Fh via CS:0000 table; 81h-8Ah via DS:B6EF when race_state < 2; else controls_poll
+func,0e12:00d5,key_none,near void(void),simulation,,table filler: controls_poll
+func,0e12:00d9,key_mouse_toggle,near void(void),simulation,,F7: mouse steering on/off; asks sensitivity (msg 32h) -> B6CB
+func,0e12:012d,key_mirror,near void(void),simulation,,R: DS:B6D2 ^= 1 (rear-view mirror; Likely)
+func,0e12:0133,key_wheel_centring,near void(void),simulation,key_wheel_centering,"key 43h/63h: toggle DS:B6DA, message 0Eh + B6DA | C: DS:B6DA ^= 1; msg 0Eh/0Fh"
+func,0e12:0149,key_version,near void(void),simulation,,V: msg 20h version
+func,0e12:0156,gear_up,near void(void),simulation,,DS:B6D7 += 1 up to DS:E564; sets throttle DS:B6D6 from DS:1232 | gear++ (not in replay); throttle = 1232 (x2 into 1st); B707 = 1
+func,0e12:0188,gear_up_gate,near void(void),simulation,,up-shift across lever ranges when DS:E5A5 > 1 (CERV) | key A / Enter+Up; CERV range jump
+func,0e12:01c5,gear_lever_target,far void(void),simulation,,DS:CC57 = lever step DS:E565[gear] | CC57 = E565[gear]; E5B6 = 0
+func,0e12:01d8,gear_down,near void(void),simulation,,DS:B6D7 -= 1; throttle from DS:1234 | gear-- (not in replay); into R while rolling > 14h damages R (sfx 11); throttle = 1234 (x2 into R)
+func,0e12:0229,gear_down_gate,near void(void),simulation,,down-shift across lever ranges when DS:E5A5 > 1 | key Z / Enter+Down; CERV range jump
+func,0e12:0269,key_knob_toggle,near void(void),simulation,key_lever_display,key 44h/64h: toggle DS:B6DB (gear lever always shown) | D: DS:B6DB ^= 1 (gear-lever knob display; Likely)
+func,0e12:026f,key_chase_view,near void(void),simulation,,F5 CHASE CAR VIEW: toggle ext_view DS:948B (saves/restores ground state); during a crash replay: life_lost(1)
+func,0e12:0302,key_wipers,near void(void),simulation,,W: DS:BC7B ^= 1 (not in replay; Likely wipers)
+func,0e12:030f,key_headlights,near void(void),simulation,,H: DS:B6D8 ^= 1 (not in replay; Likely headlights)
+func,0e12:031c,key_window_size,near void(void),simulation,,"F1 (81h): toggle DS:B6DC, message 0Ah/0Bh, 0e12:409c; to half: black 0-39 and 280-319 x 16-111, 40-279 x 80-111 | F1: DS:B6DC ^= 1; msg 0Ah/0Bh; 0e12:409c"
+func,0e12:03ab,key_detail,near void(void),simulation,,F2: detail B6DD cycle 0-2; msg 1Bh+; detail_apply
+func,0e12:03d4,detail_apply,near,render3d,,"view window B6DE by detail, sprite seed mask, traffic thinning by skill [verified] | view distance B6DE/E0/E2 and vegetation mask BA56 by detail; strips traffic flags by skill"
+func,0e12:044e,life_lost,far void(int skip),simulation,,lives message; F10 replay request; next life (race_state 2) or game over (3)
+func,0e12:04f1,panel_erase,far void(DX),simulation,replay_panel_clear,DL = 044e argument: colour 8 over 56-303 x 132-179 and 56-(DL?303:199) x 180-195 | drawing: erase the replay panel
+func,0e12:0534,key_instant_replay,near void(void),simulation,,F10: replay_start (0e12:4c51); during a replay: B6D5 = 1 and msg 19h
+func,0e12:056a,key_return_to_road,near void(void),simulation,,F6 when B6D3: B9D3 = 1; E561 = 1; E774 = 2; msg 07h
+func,0e12:059c,key_replay_pause,near void(void),simulation,,"F9 (89h) during replay: toggle DS:B6D4, print Paused (DS:1ECC) / blanks (DS:1ED5) at col 17 row 19, white on 8 | F9 (during a replay): B6D4 ^= 1; prints Paused"
+func,0e12:05cd,key_steer_sensitivity,near void(void),simulation,,F3: msg 31h with current DS:09C2 digit
+func,0e12:05e3,key_debug_rain,near void(void),simulation,,T (dead: needs DS:B6EA): BC75 cycle 0-8
+func,0e12:0606,key_debug_snow,near void(void),simulation,,S (dead: needs DS:B6EA): BC77 cycle 0-8
+func,0e12:0630,key_radio,near void(void),simulation,radio_next,"M: radio station B6CC cycle 0-2 via 01f4:1d22; msg 22h/27h/28h | key M: DS:B6CC = (B6CC+1) mod 3, music_for_state(B6CC), message 22h/27h/28h (radio station)"
+func,0e12:0667,key_debug_night,near void(void),simulation,,N (dead: needs DS:B6EA): toggle 95C7 and sky colours
+func,0e12:06a9,key_debug_cam_adjust,near void(void),simulation,,unreached: B6CD ^= 1 while frozen
+func,0e12:06b6,key_debug_flip,near void(void),simulation,,O while frozen: B6D0 ^= 1 (used only by unreached 0e12:06c3)
+func,0e12:06c3,debug_projection,near void(void),simulation,,unreached debug vertex projection using B6CE/B6D0
+func,0e12:0751,controls_poll,near void(void),simulation,,reads key/joystick/mouse bits; brake; throttle release; shift keys; steering; replay camera keys
+func,0e12:08d9,mouse_controls,near CL(CL),simulation,,mouse x -> steer_wheel; buttons/y -> gas/brake bits
+func,0e12:095a,auto_shift,near void(void),simulation,,auto-shift on DS:120A (up) / DS:120C (down) | per frame: automatic up/down shifts (DS:0095) and CERV in-range shifts
+func,0e12:09d6,steer_throttle,near void(CL),simulation,,throttle +-2; brake bit; keyboard steering ramp; analog joystick steering
+func,0e12:0b02,shift_keys,near void(CL),simulation,,Enter+Up/Down -> gear gates
+func,0e12:0b1d,race_clock_hud,near void(void),simulation,topbar_update,"from frame_update (not in menu demo): race clock tick (1 s = 5 frames, only when DS:B707), then clock_draw compass_draw radar_draw; nothing in chase view or race_state != 1 | race clock (5 frames = 1 s) then clock_draw compass_draw radar_detector"
+func,0e12:0b85,clock_draw,near void(void),simulation,,"m:ss with 4x5 font DS:B75B, colour CEB7, seconds at x 53/58 minutes at 41/46 (no leading zero), bottom y 13 | mm:ss in the top bar (hud)"
+func,0e12:0cbe,compass_draw,near void(void),simulation,,"x = (u8)(hi(DS:9498) + DS:95BE) >> 1; copy page1 strip (x..x+23, 0..7) -> screen (8, 14); debug DS:B6EA: two digits of DS:B70E at x 10/15 | compass tape; dead debug readout of B70E (hud)"
+func,0e12:0db4,radar_detector,near void(void),simulation,radar_draw,"level DS:B710>>4 (0-6), blink 8 frames on/off, sfx 0Eh every 16 frames; power light 284-287 x 9-10 colour CEAE, bars (294+3i, 295+3i) x 9-10 colour CEAF; blank 288-311 x 9-11 | bars from B710>>4; blink 8 frames; beep sfx 0Eh every 16 frames"
+func,0e12:0e74,overrev_damage,far void(void),simulation,,every 4th rev-limit event (skill >= 3): engine (20h) or current gear damage
+func,0e12:0ec5,landing_damage,far void(void),simulation,,hard landing (skill >= 3): 1/32 gear damage else random_damage
+func,0e12:0edb,random_damage,"far, no args",render3d,,1/8: sfx 0Ch + 9486 |= 4<<b; 1/64: message 2Eh + 9486 |= 1<<b [verified (code)] | 1/8 suspension (4) or brakes (8) with sfx 12; 1/64 alignment (msg 2Eh); no skill check when called by 33f7/4631
+func,0e12:0f31,crash_start,near void(),render3d,,"once: B78D=1, music_stop, shake counter 947C=0x10, BAAB = object whose id range holds BAA9 [verified] | latch crashed B78D; music stop; shake 10h; crash_object = object whose face range holds BAA9"
+func,0e12:0fa1,screen_shake_step,far void(),render3d,,"if 947C: 947C--, unless E776==0x13 set CRTC display start from table 0e12:0F81[947C] [verified] | per frame: DS:947C countdown -> display offset from CS table 0e12:0F81"
+func,0e12:0fd6,bounce_back,"near, keeps BX,CX",render3d,,"947C=4, copy car state DS:1282[6] → DS:125E[6] [verified (code), likely (meaning)] | restore position from 3 frames ago; shake = 4"
+func,0e12:22fe,atan2_xz,"CX=x, DX=z (s16) → AX=angle; clobbers BP,DI,CX,DX",render3d,vec_angle,"angle = atan2(−z, x), 10000h/turn, table 0e12:12F6 [verified] | atan2 via CS 0e12:12F6/16F8; also returns CX min DX max"
+func,0e12:234b,polar,"far cdecl (angle, r) → 9460=r·sin, 9462=r·cos",render3d,,"a = (angle>>7)&1FFh; x = hi16(sin_tab[i]*len), y = hi16(sin_tab[80h-i]*len) with quadrant signs -> DS:9460/9462; 0 = up, clockwise; sin_tab CS:0FF2 | 512-step sine table 0e12:0FF2 [verified] | DS:9460 = len*sin; DS:9462 = len*cos (table CS 0e12:0FF2)"
+func,0e12:23b1,grip_yaw_limit,far u16(u16 grip),simulation,,grip * DS:1200 / 4 * DS:E7E8 / 250 * DS:1238 / speed DS:1296 / 2 (7FFFh when speed is too low) | max course change per frame (16-bit overflow for CERV)
 func,0e12:23df,engine_sound,near,sound,,"per frame: start effect 1, pitch from DS:129C -> voice_noteword directly (see sound.md)"
-func,0e12:255e,leg_state_reset,far void(void),world,,random seed BA56; player pos 949A/949C = 9CF3/9F73[0]
-func,0e12:261c,build_colour_remap,far,objects,colour_code_map_build,"fill DS:E5B0[32] colour-code remap (day/night DS:95C7, weather DS:BC75/BC77) | DS:E5B0[32] from 95C7 / BC75 / BC77"
-func,0e12:276e,sprite_pixels_remap,near,world,,bytes >=10h via remap table (skipped in mode 13h)
-func,0e12:2789,sprites_prescale,far void(void),world,,remap sprite pixels (non-VGA) and build scaled copies in far DS:E53C; message 1Ah on overflow
-func,0e12:2810,sprite_prescale_one,near,world,,per sprite; DS:95E1 kind &7
-func,0e12:289a,sprite_scale_setup,near,world,,reads sprite record (w h rowptr rowlen)
-func,0e12:28eb,draw_sprite_child,near,objects,,scaled sprite for a tile child (DS:9A73 entry)
-func,0e12:2d54,sprite_scale_rows,near,world,,
-func,0e12:2f84,sprite_scale_row,near,world,,row centred in width
-func,0e12:323e,draw_faces_and_sprites,near,objects,,"draw sorted face records (DS:BAB1 = colour pair, DS:BA9A = face type) and sprite children"
-func,0e12:3352,sprite_animate,near,world,,drift (95B7/95B9) and animation chain DS:9611
-func,0e12:33f7,sprite_collisions,near,world,,sprite collision classes (id hi & E0h)
-func,0e12:361c,faces_sort_keys,near,objects,,per face record: depth = average (or max if w0 bit 13) of vertex depths DS:6382
-func,0e12:3a7c,draw_face_dispatch,near,objects,face_under_car,w0 bits 14-15: point 3bba / line 3c0c / triangle 3a91 / quad 3b0e | surface type (w3>>11) -> DS:BA9B at 3d28
-func,0e12:41d4,fill_spans,near,objects,,span filler into the RAM page (ES = DS:90D0); colour word byte-swapped on alternate rows (dither); OR mode when DS:BA9A == row>>7
-func,0e12:47fc,windscreen_splat,near,world,,class 80h sprites
-func,0e12:4d6d,obj_runtime_colours_all,near,objects,,calls 4db6 for the emitted objects
-func,0e12:4db6,obj_face_runtime_colours,near,objects,,"face types 20h-60h: lamp/brake/siren/traffic-light colours; 68h: animate vertices 0,1 from 12-byte frames (wipers)"
-func,0e12:52a3,obj_emit_vehicle_moving,near,objects,,like 539d for moving objects; reuses cached vertices shifted by DS:BCC4/BCC6/BCC8 when unchanged
-func,0e12:539d,obj_emit_vehicle,near,objects,,"BX = object slot; 8-byte header, far LOD (bytes 4-7) when DX > 200h; caches transformed vertex/face ranges"
-func,0e12:5466,traffic_follow_path,near,objects,vehicle_follow_lane,"advance a traffic object along its P-set waypoints (8 bytes: flags, h, x, z) | P.BIN waypoints per cell; branches; cell change at lane exits"
-func,0e12:5aa4,path_tile_lookup,near,objects,lane_list_for_cell,"SI = map cell: heading -> DS:946A, lane-path list of the tile type in P set (DS:CE9E) -> DS:BCB8 / DS:946D | SI=cell index -> P.BIN list; 946A rotation; 946D count"
-func,0e12:5ad4,vehicle_collisions,near,objects,,pairwise test of moving objects with the collision boxes of their models
-func,0e12:5cf2,vehicle_collision_boxes,near,objects,,"test one object's collision boxes (8 bytes: A,B,C,r,h) against DS:BCC4/BCC6/BCC8; sets DS:946C bits"
-func,0e12:5df9,lighthouse_rotate,near,world,,object model 0Fh; speed 95D5
-func,0e12:5e70,crossing_gate_update,near,world,,object model 10h vs train models 12h-14h; speed 95D6
-func,0e12:66ad,draw_point,near,objects,,point size DS:95D9[w0 bits 11-12] scaled by depth; w0 bit 13 = one-sided
-func,0e12:70cd,world_cells_collect,near void(void),world,world_build_visible,"per-tile loop over the map (DS:9671): road tile via 72f8, then placed static objects of that tile via 72f8 | car cell -> visible cells (CS:7068/7004 tables) -> 72f8 per cell and per static object; sets route index DS:0A74"
-func,0e12:72f8,obj_emit_static,near,objects,model_place,"AL = object index, AH != 0 -> O table (DS:E54C), else T tables (DS:E7E0 < 40h, DS:E770 >= 40h); 4-byte header; transforms (75c1), emits faces (7487) and sprite children into DS:9A73/9CF3/9F73/A1F3 | AL=type AH=0 tile (E7E0 <40h / E770) AH=1 O.BIN; vertices faces and sprite children"
-func,0e12:7487,obj_emit_faces,near,objects,model_faces,"copy CX-DS:BD24 faces to 10-byte records at DS:E5B8 (4 words + vertex base DS:945E, colour codes -> pixel pair via DS:E5B0, DS:B4B9, DS:B6B9) | face list + colour pair (B4B9/B6B9)"
-func,0e12:75c1,obj_transform_verts,near,objects,model_vertices,"transform DS:946B vertices at SI (A/B/C arrays) into DS:2502 (height), DS:3182, DS:3E02; sets DS:BD22 on vertex-buffer overflow (630h) | Y X Z arrays + BD2E / BD30 / BD32"
-func,0e12:7653,vert_rotate,near,objects,vertex_rotate,"read A=[si], B=[si+bx], C=[si+2bx]; rotate B/C by heading DS:946A (sin/cos DS:B851/B7CF), shear A by DS:BD38; returns DX:AX | quarter turns + sin/cos by 946A"
-func,0e12:76ec,frame_update,far,seed,,"per-frame world/car update (calls 0977:0008, 0ab4:1220) and first draw pass"
-func,0e12:77d5,frame_draw,far,seed,,second draw pass / overlays
-func,1905:000b,gfx_set_mode,int(int mode),seed,,"mode 00..14h, <0 = current BIOS mode; stores mode*2 in DS:BD44 (dispatch index) and mode in DS:BD49. 13h = BIOS mode 13h, 14h = unchained 320x200x256 (game VGA mode), 0Dh/0Eh EGA, 08h-0Ah Tandy, 0Bh/0Ch Hercules"
+func,0e12:2465,life_reset,far,render3d,,"optional restart pos (B9CB..), colour remap, 03d4, reset ~40 race vars [verified] | per-life reset; respawn at road_mem[2] after F6 or a crash; immunity 32h"
+func,0e12:2537,frame_buffers_init,far void(),render3d,,"90D0 = normalised seg of far CC5C (7810h bytes), 90D2 = seg E7DE+1 (DOS block of 300h paragraphs) [verified]"
+func,0e12:255e,leg_state_reset,far,render3d,,"seed (10–12 bits set) → BA56/B6ED, 25f4, 2465, zero leg state, car pos = sprite 0 [verified] | random seed BA56; player pos 949A/949C = 9CF3/9F73[0]"
+func,0e12:25f4,view_row_tables_init,near void(),render3d,,"B8D3[r]=r·140h (r<60h), B993[r]=r·58h (r<13h) [verified]"
+func,0e12:261c,build_colour_remap,far void(),render3d,colour_code_map_build,"fill DS:E5B0[32] colour-code remap (day/night DS:95C7, weather DS:BC75/BC77) | 32-byte colour-code remap at far E5B0 (day/night, rain, snow); settled name (alias colour_code_map_build) [verified] | DS:E5B0[32] from 95C7 / BC75 / BC77"
+func,0e12:276e,sprite_pixels_remap,"in DI = first pixel byte, DX = end, SI = remap table (all DS-relative, ES = DS); clobbers AX, BX",render3d,,"if (u8)DS:E338 != 13h: every byte ≥ 10h in [DI, DX) becomes table[b-10h] [verified (code); purpose (non-VGA) likely] | bytes >=10h via remap table (skipped in mode 13h)"
+func,0e12:2789,sprites_prescale,"far, no args; saves SI DI ES",render3d,,builds the pre-scaled sprite cache in the far buffer E53C from the sprite file at DS:2500; fatal message 1Ah on overflow [verified] | remap sprite pixels (non-VGA) and build scaled copies in far DS:E53C; message 1Ah on overflow
+func,0e12:2810,sprite_prescale_one,"near; in AL = sprite id, DI = cache write offset, ES = cache seg; out DI = new write offset",render3d,,writes the sprite's step directory and its scaled copies according to 95E1[id] & 7 [verified] | per sprite; DS:95E1 kind &7
+func,0e12:289a,sprite_scale_setup,"near; in B9D6/B9D7 = scale, B9D8 = id, DI, ES; out DI",render3d,,"loads the masks, writes the copy header, dispatches to shrink/grow [verified] | reads sprite record (w h rowptr rowlen)"
+func,0e12:28eb,sprite_draw,"near; in BX = k (visible index), B9D5, B9D6, B9D8; saves BX ES",render3d,draw_sprite_child,"scaled sprite for a tile child (DS:9A73 entry) | picks the cached copy, converts x, calls the main or mirror blitter [verified]"
+func,0e12:2999,sprite_blit_mirror,as 2b74,render3d,,"same for the rear-view mirror (88 px wide, 19 rows, half vertical scale) [verified]"
+func,0e12:2a9e,sprite_rows_mirror,as 2c7c,render3d,,"row copy into seg 90D2 (stride 58h, end 688h) [verified]"
+func,0e12:2b74,sprite_blit_main,"near; in BX = k, SI = copy pixel data, ES = cache seg, 947E = centre x px, 9480/9481/B9DB/B9E1",render3d,,"horizontal clip (0..319), vertical projection with roll, top clip, then 2c7c [verified]"
+func,0e12:2c7c,sprite_rows_main,"near; in AL = top row (≥ 0), SI, B9D4, B9DE, B9DF",render3d,,transparent row copy into seg 90D0 (stride 140h) until BA93 or H rows [verified]
+func,0e12:2d54,sprite_scale_rows,"near; in SI = row-pointer table, CX = row-length table, DI, B9E1, B9E3, 9480 = w, 9481 = h; out DI",render3d,,shrink (scale ≤ 1): keeps a row when the next vertical bit is 1 [verified]
+func,0e12:2dc6,sprite_scale_rows_up,same as 2d54,render3d,,"grow (1 < scale ≤ 2): stores every row once, with a repeat count B9D7 + bit [verified]"
+func,0e12:2e49,sprite_pick_scale,"near; in BX = 2·k, DX = depth key 8902[k], B9D5; out B9D8 = sprite number, B9D6 = apparent size; saves BX",render3d,,B9D6 = hi(atan(size/depth)) in 8-px units [verified]
+func,0e12:2eb6,sprite_scale_patterns,"near; in B9D6, B9D7 (caller 0); out B9D7, masks B9EF..BA08 and BA0A..BA0C",render3d,,converts the scale value to a doubling count + a 24-step remainder and loads the horizontal (56-bit) and vertical (24-bit) keep masks from CS:267E [verified]
+func,0e12:2f84,sprite_scale_row,"near; in BX = source pixels, CL = row-length word low byte, DI (ES), 9480 = w; out DI advanced, DX = DI at entry",render3d,,"one row, shrink: emits pad/pixel only where the horizontal mask bit is 1 [verified] | row centred in width"
+func,0e12:3004,sprite_scale_row_up,same as 2f84 but no DX output,render3d,,"one row, grow: emits every pad/pixel once, and again when the mask bit is 1 [verified]"
+func,0e12:3085,sprite_list_build,"near, no args; saves SI DI",render3d,,"rebuilds the visible-candidate list 8B62[], count 94AE [verified]"
+func,0e12:312e,sprite_sort,near; saves SI,render3d,,"full sort (quicksort) after a list rebuild, else bubble sort [verified]"
+func,0e12:3147,sprite_sort_bubble,near,render3d,,"calls 797b on [first, 94AE-1] [verified]"
+func,0e12:316c,sprite_project,near; saves BP,render3d,,"per listed sprite: screen angle 8C92, clamped distance 8A32, depth key 8902 [verified]"
+func,0e12:323e,draw_faces_and_sprites,near; saves ES SI DI BP,render3d,,"draw sorted face records (DS:BAB1 = colour pair, DS:BA9A = face type) and sprite children | frame driver: list/project/sort/animate/collide, then the face+sprite merge loop [verified]"
+func,0e12:3352,sprite_animate,near,render3d,,"drift (95B7/95B9), animation chain (9611), crash-debris flight (ids 6..8) [verified] | drift (95B7/95B9) and animation chain DS:9611"
+func,0e12:33f7,sprite_collisions,near,render3d,,"radius test on the depth key against 95CF, effect by collision class [verified (code); effects likely] | sprite classes 20h-E0h (knock over, solid, splat, go back, wrong way) | sprite collision classes (id hi & E0h)"
+func,0e12:34c3,scene_prepare,near void(),render3d,scene_update,"BAD4=60h; 4d60, 5e70, 394c, 361c, 34f1 (cockpit only), 373c, 4d6d, 5ffe [verified] | render root; runs traffic, gate, near_face_collisions, lights, police"
+func,0e12:34f1,near_face_hits,near,render3d,near_face_collisions,"walk sorted faces with depth ≤ 94C1: types 18h/19h/1Bh → 4631, 1Ah → 4590, 1/2 → crash or bump [verified] | faces within depth 60h: type 1 solid, 2 vehicles, 18h-1Bh signs, 1Ah barriers"
+func,0e12:35f9,face_order_reset,near void(),render3d,,order[i] = E5B8 + 10·i for 640h entries [verified]
+func,0e12:361c,faces_sort_keys,near void(),render3d,,"per face record: depth = average (or max if w0 bit 13) of vertex depths DS:6382 | per face depth key (average or bit-13 farthest rule), then full quicksort (list rebuilt) or one bubble pass-set [verified]"
+func,0e12:373c,sky_ground_draw,near void(),render3d,,sky-flash countdown BAA6 (lightning / police); horizon line from 9496/roll; sky (flat or 5-band gradient) + ground polygon into V; mirror sky/ground 7b9b [verified]
+func,0e12:394c,vertices_project,near void(),render3d,,"for every vertex: screen x (4A82, 1/32 px angle), horizontal distance (7002), depth (6382); mark y lazy (5702=7C82=8000h) [verified]"
+func,0e12:39fd,vertex_project_y,near (BX=2·v),render3d,,front view y (5702) with pitch/roll; BAD4=min [verified]
+func,0e12:3a7c,draw_face_dispatch,"near (BX=2·v0, SI=2·v1, DH=w0_hi&C0h, ES:BP=&face.w1)",render3d,face_under_car,"w0 bits 14-15: point 3bba / line 3c0c / triangle 3a91 / quad 3b0e | by vertex count: point 3bba, line 3c0c, triangle 3a91→3a9e, quad 3b0e [verified] | render dispatcher (objects spec name confirmed over face_under_car); ground query label 3d28 inside the triangle path | surface type (w3>>11) -> DS:BA9B at 3d28"
+func,0e12:3a9e,draw_face_polygon,"near (BX,SI,DI [,BP] = vertex offsets)",render3d,,"front/mirror visibility tests, lazy y projection, choose rasterizer; face-under-camera path; quad split [verified]"
+func,0e12:3ebf,fill_around_camera,"near (BX,SI,DI)",render3d,,triangle enclosing the camera: for its 3 edges (sorted by x) fill below (ground) or above (BACF) [verified]
+func,0e12:3f6c,fill_below_edge,"near (AX=x0, CX=x1, BX/SI=vertex offsets, 5702)",render3d,,fill the region below the edge down to the view bottom (between x0..x1) [verified]
+func,0e12:3fe5,fill_above_edge,near (same),render3d,,"fill the region above the edge, from BA9C (or the edge top) [verified]"
+func,0e12:409c,view_setup,far void(),render3d,,"view size from 09C4/B6DC: BA8F,BA91,BA93,BA95,BA97,BA99,BD3D,B7AF[8]; patches 24 clip immediates in CS (table DS:BAE4) [verified]"
+func,0e12:41d4,fill_spans,"near (SI=x left, BP=x right in 1/32 px; BA9C,BAC1/3/5,BAB3/5,9460/2,BABD/F,BAC7..BACD,BAAF/BAB0,BAB1,BA9A)",render3d,,span filler into the RAM page (ES = DS:90D0); colour word byte-swapped on alternate rows (dither); OR mode when DS:BA9A == row>>7 | 3-segment edge walker writing dithered spans (or OR-ing when type 0) into V [verified]
+func,0e12:43db,blob_spans,"near (SI,BP=x; BAB3,BAB5,BA9C,BAC1)",render3d,,"disc-like blob, no dither [verified]"
+func,0e12:44c2,line_thin_spans,"near (BP=x top, SI=x step; BA9C,BAC1)",render3d,,"1-px line as per-row spans, no dither [verified]"
+func,0e12:4590,plate_fold_down,"ES:BP=&face.w3, keeps BX,CX",render3d,barrier_knockdown,"type-1Ah face pair: fold the 2nd face flat, both faces → type 3; sfx 4 [verified] | flatten a type-1Ah barrier; sfx 4; shake 5; bump 3"
+func,0e12:4631,knockover_hit,"CH=type, ES:DI=&sort ptr, keeps BX,CX",render3d,object_face_hit,"find the object owning the face, replace its model (knocked-over variant / bird takes off), force world rebuild, damage roll [verified] | knock over sign/cone/bird: model swap; sfx 5/12h; random_damage"
+func,0e12:46c0,cockpit_overlays,near void(),render3d,,"46dc; if !948B: 4b37, 4bf3, 4a5c [verified]"
+func,0e12:46dc,precipitation_draw,near void(),render3d,,"snow (BC77) flakes / rain (BC75) streaks into V, spawn windscreen drops; no weather: retire one drop slot [verified]"
+func,0e12:477c,rain_streaks,"near (es=V, al=colour, di=rand base, si=n-1, bx=limit)",render3d,,"2n vertical streaks, length ((n+1)>>1)+3 [verified]"
+func,0e12:47aa,snow_flakes,near (same regs),render3d,,2n single pixels + copies at offset ^0x4000 [verified]
+func,0e12:47d1,windscreen_spawn,"near (si=n, dl=type)",render3d,,0..2 new drops per frame from RNG DS:00D2/00D4 [verified]
+func,0e12:47fc,windscreen_splat,"near (ax=rand word, dl=type)",render3d,,put drop in 64-slot ring; compute wiper key [verified] | class 80h sprites
+func,0e12:487e,windscreen_drops_draw,near void(),render3d,,age and draw the 64 drops into V [verified]
+func,0e12:48f5,drop_shape_fresh,"near (es:di, ax=colour pair, bx=limit)",render3d,,5-row blob (age ≤ 1) [verified]
+func,0e12:495c,drop_shape_old,near (same),render3d,,"7/8-row speckle, 2 variants by colour [verified]"
+func,0e12:4a5c,wipers_update_draw,near void(),render3d,,"wiper state machine, wipe drops, draw drops, draw 2 wiper blades [verified]"
+func,0e12:4b37,headlight_beam_draw,near void(),render3d,,2 quads OR-ed with colour 08 (brightening) when headlights on at night / in weather [verified (OR effect: likely)]
+func,0e12:4bf3,dashboard_edge_draw,near void(),render3d,,4-quad silhouette of the dash/hood at the view bottom (crashed variant after crash) [verified]
+func,0e12:4c51,replay_start,near void(),render3d,,"enter replay camera (948B=1, 94B2=1), end-mark the recorder ring [verified] | replay / crash camera: replay_state 1, ext_view 1, end marker (index & 7FFh bug)"
+func,0e12:4cb0,overlay_quads4_draw,near (stack: outline colour pair),render3d,,4 quads from slots C68..C7E + 2 edge lines [verified]
+func,0e12:4d60,objects_update,"near, no args",render3d,moving_objects_update,"calls 4fc7, 509b, 5ad4, 5df9 [verified] | calls 4fc7 509b 5ad4 5df9"
+func,0e12:4d6d,obj_runtime_colours_all,near; CX in = leftover (see 4db6),render3d,,"calls 4db6 for the emitted objects | per-frame counters, traffic-light phase; 4db6 for every object with faces [verified]"
+func,0e12:4db6,obj_face_runtime_colours,"BX=slot, CX=loop limit (not initialised)",render3d,,"face types 20h-60h: lamp/brake/siren/traffic-light colours; 68h: animate vertices 0,1 from 12-byte frames (wipers) | override colour word of the object's leading faces of types 4–12; type 13 animates model vertices 0,1 (wipers) [verified]"
+func,0e12:4fc7,parked_vehicles_emit,near; clobbers all,render3d,obj_emit_parked,emit objects 0..A477−1 with flags 1000h set / 2000h clear (parked vehicles; lightning object) via 539d [verified] | parked 1000h objects; lightning flash + thunder sfx 9 when rain >= 6
+func,0e12:509b,moving_objects_update,near,render3d,traffic_update,"per moving object (flags 2000h): timers, 5466, integrate velocity, window test, emit via 52a3 + 7487 (face cache) [verified] | timers; per object vehicle_follow_lane + movement; visibility; emit"
+func,0e12:52a3,obj_emit_vehicle_moving,"BX=slot, DX=Manhattan dist → CX=nf (normal path)",render3d,,"like 539d for moving objects; reuses cached vertices shifted by DS:BCC4/BCC6/BCC8 when unchanged | set placement from object arrays, pick model/LOD, transform vertices (75c1) [verified]"
+func,0e12:539d,obj_emit_vehicle,"BX=slot, DX=dist, ES=O-set seg",render3d,,"BX = object slot; 8-byte header, far LOD (bytes 4-7) when DX > 200h; caches transformed vertex/face ranges | as 52a3 for parked O-models; reuses last frame's vertex+face ranges when slots unchanged; emits faces [verified]"
+func,0e12:5466,vehicle_follow_lane,near (BX = 2i),simulation,traffic_follow_path,"advance a traffic object along its P-set waypoints (8 bytes: flags, h, x, z) | waypoints, stops at lights/signs/crossing, branches, opponent scripts, overtaking (conflict: traffic_follow_path) | P.BIN waypoints per cell; branches; cell change at lane exits"
+func,0e12:5aa4,lane_list_for_cell,near (SI cell) -> ES:SI,simulation,path_tile_lookup,"SI = map cell: heading -> DS:946A, lane-path list of the tile type in P set (DS:CE9E) -> DS:BCB8 / DS:946D | P.BIN list of the cell; 946A rotation; 946D count (conflict: path_tile_lookup) | SI=cell index -> P.BIN list; 946A rotation; 946D count"
+func,0e12:5ad4,vehicle_collisions,near,render3d,,"pairwise test of moving objects with the collision boxes of their models | clears/sets stop flags; pairwise box test of moving objects vs lower-index visible objects; sets 8000h/9000h, crash BAA8 [verified] | vehicle boxes; player hit -> BAA8"
+func,0e12:5cf2,vehicle_collision_boxes,"BX=slot j, box centre in BCC4/BCC6/BCC8, [9462]=r,h of i's box, ES/SI clobbered",render3d,,"test one object's collision boxes (8 bytes: A,B,C,r,h) against DS:BCC4/BCC6/BCC8; sets DS:946C bits | test all boxes of object j, OR bits into 946C [verified] | box tests -> 946C bits 7/6/4"
+func,0e12:5df9,lighthouse_rotate,near,render3d,,moves 2 vertices of the lighthouse's first face on a circle (beam) [verified] | object model 0Fh; speed 95D5
+func,0e12:5e70,crossing_gate_update,near,render3d,,"train (models 12h–14h) near first gate → gate angle BCD8, bells; calls 5f57 for up to 2 gates [verified] | train near gate -> BCD8 gate position; bells sfx 7/8 | object model 10h vs train models 12h-14h; speed 95D6"
+func,0e12:5f57,crossing_gate_arm_place,SI=gate slot,render3d,,"place arm tip vertices from BCD8, arm length 95D6 [verified]"
+func,0e12:5ffe,police_update,near,render3d,,"police (models 11h, 30h): radar level, pursuit start, catch/ticket, siren sound [verified (code), likely (meaning)] | radar level B710; chase at speed >= 48; pull-over 30 frames; ticket +20 s; siren sfx 14h/94h"
+func,0e12:61d2,police_pursuit_clear,near,render3d,police_end_chases,flags &= BFBFh for all police models; BCB6=0 [verified] | clear 4000h/40h on police models 11h/30h; pullover count 0
+func,0e12:61fd,opponent_times_finalize,"far (race_run end, if B09)",render3d,opponents_final_times,"624a for both opponents, copy times to results records 1,2 (DS:E80F, E82A) [verified] | opponent times at leg end (Likely)"
+func,0e12:624a,opponent_time_estimate,"BX=opp slot (2/4), SI=0/3",render3d,opponent_final_time,unfinished opponent: estimate time from distance; add 20 s per ticket [verified] | estimate unfinished opponent time; ticket penalties (Likely)
+func,0e12:6316,plane_height_at_camera,"near (BX,SI,DI) → AX",render3d,tri_height_at_viewpoint,"height of the triangle's plane at camera X/Z (BCDF), BACF=1 if above camera Y [verified] | height of the triangle at the probe point 94A1/94A3"
+func,0e12:6421,ground_slope_update,near void(),render3d,,"no drawing: terrain triangle under the car (BA89/8B/8D) → roll code BCDC, clamped pitch delta BCDD [verified] | BCDC roll code; BCDD pitch error clamp 18h; BA85 fallback"
+func,0e12:6604,rotate_by_heading,"near (ax=a, cx=c, [946A]=angle byte) → ax, cx",render3d,,"rotates vector by 256-step angle with Q15 tables DS:B7CF (sin, 65 entries) / DS:B851 (cos) [verified] | rotate by DS:946A (Q15 tables B7CF/B851)"
+func,0e12:6666,slope_to_roll_code,near (al) → al,render3d,slope_to_tilt_code,sign(al) × DS:BD01[(abs(al)&0x7F)>>2]; roll is a *shift count* (0 = level) [verified] | table DS:BD01
+func,0e12:6686,pitch_shear,far u8(u16 pitch),simulation,,table DS:BCE1 -> model shear byte
+func,0e12:66ad,point_draw,"near (BX=2·v, SI=w0)",render3d,draw_point,"point size DS:95D9[w0 bits 11-12] scaled by depth; w0 bit 13 = one-sided | lamp blob: size 95D9[k] over distance, width by the owning object's heading (one-sided with w0 bit 13) → 43db [verified]"
+func,0e12:67af,line_draw,"near (BX,SI=vertex offsets, AX,DX=their x, ES:BP=&w0)",render3d,,thin (44c2) or width 95DD[k] scaled by distance (parallelogram via 41d4) [verified]
+func,0e12:682e,tri_fill,"near (BX,SI,DI)",render3d,,"sort by y; flat row 685c, flat bottom 68b0, flat top 6909, general 6956 → 41d4 [verified]"
+func,0e12:685c,tri_fill_row,entry inside 682e (also from 69da),render3d,,one row from min x to max x [verified]
+func,0e12:68b0,tri_fill_flat_bottom,entry inside 682e (also 69da),render3d,,apex top [verified]
+func,0e12:6909,tri_fill_flat_top,entry inside 682e (also 69da),render3d,,apex bottom [verified]
+func,0e12:69da,quad_fill,"near (BX,SI,DI,BP; BAD0=face)",render3d,,"y-sort with top-vertex word tracking (BAD2), degenerate cases → triangle entries, else 2- or 3-segment chains → 41d4 [verified]"
+func,0e12:6e92,camera_pos_update,near void(void),simulation,,camera X/Z and probe point 94A1/94A3; sun sprite 8; crash camera target
+func,0e12:6f9c,polar_small,"near (bl=angle, dl=dist) → cx=dX, dx=dZ",render3d,,−2·dist·sin/cos via CS table 0e12:0FF2 [verified] | chase-camera offset
+func,0e12:70b8,obj_ranges_clear,near void(),render3d,obj_face_ranges_clear,"B0F9[i]=0, B379[i]=0 for 160 objects [verified] | B0F9[160] = B379[160] = 0"
+func,0e12:70cd,world_build_visible,near void(),render3d,world_cells_collect,"per-tile loop over the map (DS:9671): road tile via 72f8, then placed static objects of that tile via 72f8 | when the car's cell or heading octant changes: reset lists, emit the 3/6/10 visible cells (72f8 AH=0) and the static objects in them (72f8 AH=1); else only route id 0A74. Settled name (was world_cells_collect / world_build_visible) [verified] | car cell -> visible cells (CS:7068/7004 tables) -> 72f8 per cell and per static object; sets route index DS:0A74"
+func,0e12:72f8,model_place,"near (AL=model, AH=0 tile / 1 O-object; BD2A/2C/2E, 946A, BD38, BD26)",render3d,obj_emit_static,"AL = object index, AH != 0 -> O table (DS:E54C), else T tables (DS:E7E0 < 40h, DS:E770 >= 40h); 4-byte header; transforms (75c1), emits faces (7487) and sprite children into DS:9A73/9CF3/9F73/A1F3 | resolve model (alias rule), 75c1 vertices, 7487 faces, then tile sprite children into the sprite instance list. Settled name (was obj_emit_static / model_place) [verified] | AL=type AH=0 tile (E7E0 <40h / E770) AH=1 O.BIN; vertices faces and sprite children"
+func,0e12:7487,model_emit_faces,"near (ES:SI=first face, CX=nf, 945E=vertex base)",render3d,model_faces obj_emit_faces,"copy CX-DS:BD24 faces to 10-byte records at DS:E5B8 (4 words + vertex base DS:945E, colour codes -> pixel pair via DS:E5B0, DS:B4B9, DS:B6B9) | append nf−BD24 faces (max 640h) as 10-byte records with remapped colour pair; record object range; note gate/lighthouse objects. Settled (was obj_emit_faces / model_faces) [verified] | face list + colour pair (B4B9/B6B9)"
+func,0e12:75c1,model_emit_vertices,"near (ES:SI=first A word, CX=nv, 946B=nv) → SI past C[]",render3d,model_vertices obj_transform_verts,"transform DS:946B vertices at SI (A/B/C arrays) into DS:2502 (height), DS:3182, DS:3E02; sets DS:BD22 on vertex-buffer overflow (630h) | reserve nv vertices at BADA (max 630h), world-space transform via 7653, record object range. Settled (was obj_transform_verts / model_vertices) [verified] | Y X Z arrays + BD2E / BD30 / BD32"
+func,0e12:7653,vertex_rotate,"near (ES:SI=&A[i], BX=2·nv, BD38, 946A) → DX=A', AX=B', CX=C'",render3d,vert_rotate,"read A=[si], B=[si+bx], C=[si+2bx]; rotate B/C by heading DS:946A (sin/cos DS:B851/B7CF), shear A by DS:BD38; returns DX:AX | pitch shear, fine rotation (64 steps/quarter, Q15 tables B7CF/B851), quarter turn. Settled (was vert_rotate / vertex_rotate) [verified] | quarter turns + sin/cos by 946A"
+func,0e12:76ec,frame_update,far void(),render3d,,"per frame: shake, sim, camera select, 70cd, 34c3 (3D build + sky/ground into V) [verified] | per-frame world/car update (calls 0977:0008, 0ab4:1220) and first draw pass"
+func,0e12:77d5,frame_draw,far void(),render3d,,page 1; 323e faces+sprites into V/M; overlays; mirror frame; page 0 [verified] | second draw pass / overlays
+func,0e12:78a7,sprite_sort_quick,near; sets BX = 2,render3d,,"calls 78cc on [first, 94AE-1] [verified]"
+func,0e12:78cc,sprite_qsort,"near, cdecl-like: [bp+6] = first ptr, [bp+4] = last ptr (into 8902), BX = 2",render3d,,"recursive quicksort, descending on 8902; ranges ≤ 20 elements go to 797b [verified]"
+func,0e12:794b,sprite_rec_swap,"near; SI, DI = pointers into 8902",render3d,,swaps two records in the four parallel arrays (stride 130h) [verified]
+func,0e12:797b,sprite_bubble_sort,"near; [bp+6] = first ptr, [bp+4] = last ptr",render3d,,"bubble sort, descending, pass ends at the last swap [verified]"
+func,0e12:7a18,faces_quicksort_all,near void(),render3d,,"7a35(keys[0], keys[BAD8−1]) [verified]"
+func,0e12:7a35,faces_quicksort,"near cdecl (lo, hi byte ptrs into key array, ES=E5BA, BX=2)",render3d,,"ascending quicksort on u16 keys, parallel pointer array at −C80h; ≤ 21 elements → 7b06 [verified]"
+func,0e12:7b06,faces_bubble_sort,"near cdecl (lo, hi)",render3d,,ascending bubble passes ending at the last swap; stops when the remaining range is ≤ 2 elements (quirk) [verified]
+func,0e12:7b9b,mirror_sky_ground,near void(),render3d,,"mirror horizon (from 948F, roll sign ignored) → 7cd9 sky, 7d94 ground into M [verified]"
+func,0e12:7c21,mirror_frame_draw,far void(),render3d,,clear M grey when invalid/turned off; draw M border; draw mirror lower rim into V [verified]
+func,0e12:7cd9,mirror_fill_above_edge,"near (as 3fe5, y halved)",render3d,,clone of 3fe5 for M [verified]
+func,0e12:7d94,mirror_fill_below_edge,"near (as 3f6c, y halved, bottom 13h)",render3d,,clone of 3f6c for M [verified]
+func,0e12:7e11,fill_spans_mirror,as 41d4,render3d,,"mirror clone: segment 90D2, rows B993, 13h rows, width B00h [verified]"
+func,0e12:8016,blob_spans_mirror,as 66ad / 43db,render3d,,"mirror clones (distance ×2, 14h for BA99, mirror x/y) [verified]"
+func,0e12:80fb,line_thin_spans_mirror,as 67af / 44c2,render3d,,mirror clones [verified]
+func,0e12:81c7,point_draw_mirror,as 66ad / 43db,render3d,,"mirror clones (distance ×2, 14h for BA99, mirror x/y) [verified]"
+func,0e12:82d6,line_draw_mirror,as 67af / 44c2,render3d,,mirror clones [verified]
+func,0e12:836e,tri_fill_mirror,as 682e..,render3d,,mirror clone of 682e with mirror x transform [verified]
+func,0e12:839c,tri_fill_mirror_839c,as 682e..,render3d,,mirror clone of 682e with mirror x transform [verified]
+func,0e12:8413,tri_fill_mirror_8413,as 682e..,render3d,,mirror clone of 682e with mirror x transform [verified]
+func,0e12:8490,tri_fill_mirror_8490,as 682e..,render3d,,mirror clone of 682e with mirror x transform [verified]
+func,0e12:85a9,quad_fill_mirror,as 69da,render3d,,mirror clone of 69da [verified]
+func,0e12:8b5f,vertex_project_y_mirror,near (BX=2·v),render3d,,"mirror y (7C82), half scale, centre row 0Ah [verified]"
+func,16cf:0006,gfx_detect,int(void),platform,,"adapter: 11h/12h/13h VGA-MCGA, 0Dh/0Fh/10h EGA, 07h/0Bh mono, 09h Tandy, 04h CGA"
+func,16d9:0002,gfx_line_to,int(int x int y),platform,gfx_lineto,"platform: Bresenham via gfx_plot, axis-parallel via gfx_fill_clipped; end point becomes current | line from pen, ends inclusive; h/v lines via gfx_fill_rect_clipped; pen := end"
+func,16e5:0007,gfx_get_draw_seg,u16(void),platform,,returns DS:BD88 (Ghidra FUN_16d9_00c7)
+func,16e5:000b,gfx_get_mode,int(void),platform,,"DS:BD49, or BIOS mode (INT 10h AH=0Fh) if negative"
+func,16e6:000e,mouse_init,int(void),platform,,INT 33h AX=0; sets BD46/BD47 and coordinate shifts BD4F/BD50; returns buttons or 0
+func,16ec:0004,mouse_set_range,int(int x0 int x1 int y0 int y1),platform,,INT 33h AX=7/8 (shifted)
+func,16ef:0009,mouse_set_pos,int(int x int y),platform,,platform: INT 33h fn 4 | INT 33h AX=4 (shifted)
+func,16f1:000d,mouse_get,int(int *x int *y int *buttons),platform,,"INT 33h AX=3, unshifted, x clamped to width-1"
+func,16f5:0008,mouse_show,int(int on),platform,,INT 33h AX=1/2 on change
+func,16fb:0008,gfx_move_to,int(int x int y),platform,gfx_moveto,platform: DS:BD4B/BD4D | pen DS:BD4B/BD4D
+func,16fc:000b,text_exit_clear,int(void),platform,,"text mode only: DOS ESC[2J, clear page if cursor not at 0,0"
+func,16ff:000b,bios_wait_ticks,int(int n),platform,,platform: INT 1Ah busy wait | busy-wait n BIOS ticks (INT 1Ah)
+func,1703:0001,gfx_set_colour,int(int c),platform,,platform: DS:BD41/BD42 = c | 13h: BD41 = BD42 = c
+func,170e:0002,gfx_set_copy_page,int(int p),platform,gfx_show_page,"platform: display page select (DS:BD43) | 13h: BD43 = p, BD86 = BD8C[p]; source of 17eb; not a display select (hud.md: gfx_show_page)"
+func,1714:000e,gfx_set_draw_page,int(int p),platform,gfx_set_page,"platform: DS:BD40 = page, DS:BD88 = DS:BD8C[page]; game mirrors in DS:009A | 13h: BD40 = p, BD88 = BD8C[p]"
+func,171b:000a,gfx_set_visible_page,int(int p),platform,,13h: swaps page table entries and contents; TD3 calls it once with 0 (no-op)
+func,172d:000e,gfx_alloc_page,int(int p),platform,,"13h: DOS 48h FA0h paragraphs -> BD8C[p], zeroed; returns 0 / DOS error 7,8 / 1"
+func,1736:0004,gfx_free_page,int(int p),platform,,"13h: DOS 49h, BD8C[p] = A000h"
+func,173c:0005,gfx_put_pixel,int(int x int y),platform,gfx_plot,platform: clipped to DS:BD53..BD51 x DS:BD57..BD55 | clipped; 13h draw[y*320+x] = BD41
+func,173c:01ca,gfx_set_pal_reg,int(int idx int a int b int c),platform,,dead module linked for CS 1758h; EGA/VGA attribute palette
+func,1776:0008,gfx_set_display_offset,int(int x int y),platform,,CRTC start = y*80 + x/4 after vretrace (screen shake)
+func,1785:000b,gfx_fill_rect,int(int x0 int x1 int y0 int y1),platform,,"platform: inclusive, no clipping | inclusive, unclipped, colour BD41, 13h bottom row first"
+func,17be:0009,gfx_copy_rect_to_copy_page,int(int x0 int x1 int y0 int y1),platform,,draw page -> copy page; no callers
+func,17eb:0006,gfx_copy_rect_from_copy_page,int(int x0 int x1 int y0 int y1),platform,,copy page (BD86) -> draw page (BD88)
+func,1818:0003,gfx_copy_rect,int(int x0 int x1 int y0 int y1 int dx int dy_bottom int src int dst),platform,,"platform: rows copied bottom-up, dst given by its bottom-left, no clipping | page to page, rows bottom-up, dst y = bottom row"
+func,185f:000b,gfx_draw_bitmap,int(u8 *bits int bytes_per_row int rows),platform,gfx_draw_mask,"platform: 1-bit mask, first row = bottom at current y, MSB left, set bits in current colour | 1bpp at pen, set bits = BD41, rows upward; 185f:01b4 (Tandy path) is overwritten by timer_install"
+func,18b3:0004,gfx_read_bitmap,int(u8 *dst int bytes_per_row int rows),platform,gfx_read_mask,"platform: mask of pixels equal to the current colour (same geometry as gfx_draw_mask) | 1bpp mask of pixels == BD41 at pen, rows upward"
+func,18f3:0002,gfx_set_ega_palette,int(u16 *pal16),platform,,EGA/Tandy/13h DAC 0-15; not called in the VGA build
+func,1905:000b,gfx_set_mode,int(int mode),platform,,"mode 00..14h, <0 = adopt BIOS mode; mode*2 -> DS:BD44; TD3 VGA uses 13h (BIOS chain-4), 14h unused | mode 00..14h, <0 = current BIOS mode; stores mode*2 in DS:BD44 (dispatch index) and mode in DS:BD49. 13h = BIOS mode 13h, 14h = unchained 320x200x256 (game VGA mode), 0Dh/0Eh EGA, 08h-0Ah Tandy, 0Bh/0Ch Hercules"
+func,192e:0005,gfx_fill_rect_clipped,int(int x0 int x1 int y0 int y1),platform,gfx_fill_clipped,platform | clip then gfx_fill_rect
+func,1937:0003,gfx_clear_page,int(void),platform,,clears draw page (13h zero FA00h bytes)
 func,1940:0018,_astart,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:03f8, score 0.99)"
 func,1940:00de,_cinit,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:04be, score 0.84)"
 func,1940:01a2,exit,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:0582, score 1.00)"
@@ -98,14 +381,31 @@ func,1940:01b9,_exit,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:0599, score 0.71)"
 func,1940:0200,_ctermsub,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:05e0, score 1.00)"
 func,1940:022d,_initterm,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:060d, score 1.00)"
 func,1940:0240,fclose,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:0978, score 0.80)"
+func,1940:0308,fopen,far,platform,,MSC 5.1 RTL
+func,1940:0334,fread,far,platform,,MSC 5.1 RTL
+func,1940:0526,fwrite,far,platform,,MSC 5.1 RTL
+func,1940:066c,_ffree,far,platform,,MSC 5.1 RTL (far heap free)
+func,1940:0681,_fmalloc,far,platform,,MSC 5.1 RTL
 func,1940:0746,strcpy,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:2956, score 1.00)"
 func,1940:0778,strcmp,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:2988, score 1.00)"
 func,1940:07a4,strlen,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:29b4, score 1.00)"
+func,1940:07c4,getch,far,platform,,MSC 5.1 RTL (DOS 08h)
+func,1940:07dc,getcwd,far,platform,,MSC 5.1 RTL
+func,1940:07f2,_getdcwd,far,platform,,MSC 5.1 RTL
+func,1940:08a6,_harderr,far,platform,,MSC 5.1 RTL (INT 24h hook)
+func,1940:08f3,_hardresume,far,platform,,MSC 5.1 RTL
+func,1940:08fc,_aFldiv,far,platform,,MSC 5.1 RTL long signed division
 func,1940:0998,_aFlmul,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:2ee8, score 1.00)"
+func,1940:09cc,_aFNaldiv,far,platform,,MSC 5.1 RTL long /= (signed)
+func,1940:09f0,_aFNauldiv,far,platform,,MSC 5.1 RTL long /= (unsigned)
+func,1940:0a14,_aFuldiv,far,platform,,MSC 5.1 RTL unsigned long division
+func,1940:0a76,_aFulrem,far,platform,,MSC 5.1 RTL unsigned long remainder
 func,1940:0ae2,_FF_MSGBANNER,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:0620, score 1.00)"
 func,1940:0b0c,_nullcheck,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:066e, score 1.00)"
 func,1940:0b32,_NMSG_TEXT,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:088c, score 1.00)"
 func,1940:0b5d,_NMSG_WRITE,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:08b7, score 1.00)"
+func,1940:0b88,_filbuf,far,platform,,MSC 5.1 RTL
+func,1940:0c4a,_flsbuf,far,platform,,MSC 5.1 RTL
 func,1940:0da8,_freebuf,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:0df0, score 1.00)"
 func,1940:0dd8,_openfile,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:0e20, score 0.68)"
 func,1940:0ed2,fflush,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:105c, score 0.67)"
@@ -118,7 +418,11 @@ func,1940:11b6,malloc,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:26a8, score 1.00)
 func,1940:1360,_brkctl,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:2852, score 1.00)"
 func,1940:1424,strcat,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:2916, score 1.00)"
 func,1940:1464,itoa,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:29d0, score 1.00)"
+func,1940:1480,bdos,far,platform,,MSC 5.1 RTL
+func,1940:14dc,memcpy,far,platform,,MSC 5.1 RTL (near data)
+func,1940:1508,remove,far,platform,,MSC 5.1 RTL (INT 21h 41h)
 func,1940:153c,_dosmaperr,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:094a, score 1.00)"
+func,1940:156a,_getbuf,near,platform,,MSC 5.1 RTL
 func,1940:15d8,lseek,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:225e, score 0.95)"
 func,1940:1652,open,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:22d8, score 0.96)"
 func,1940:17f6,stackavail,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:2682, score 1.00)"
@@ -127,17 +431,18 @@ func,1940:18b2,flushall,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:0a3a, score 0.7
 func,1ace:0006,music_notes_off,near,sound,,"all voices owned by music: forced note off, owner/priority 0; clears music-playing bit (C5E1 bit 0)"
 func,1ace:004b,music_play,far,sound,,"(far ptr song, fade, vol): pos = ptr+2, master_vol, countdown 1, reclaim voices; game always passes 0,0"
 func,1ace:00b4,music_stop,far,sound,,(mode): 0 = stop now; bit 7 = stop at next loop/Bx event; else fade-out speed (unused)
-func,1ace:00ec,voice_release,far,sound,,"(voice): stop an effect on a voice: key off, owner/priority/note 0, free its sfx slot"
-func,1ace:0151,music_claim_voices,near,sound,,"every voice not held by an effect with priority > 40h -> owner 1 (music), priority 40h"
-func,1ace:0185,music_restart,far,sound,,restart the loaded song if ready and stopped; no callers
+func,1ace:00ec,voice_release,far,sound,,"(u16 voice): end an effect on a voice: free its slot, forced note off, owner/priority/noteword/note 0, clear C5E1 bit 2; ignores v > 15 and owners <= 1"
+func,1ace:0151,music_claim_voices,near,sound,,"every voice not held by an effect with priority > 40h -> owner 1 (music), priority 40h; bug: calls voice_release(owner id) instead of the voice (unreachable)"
+func,1ace:0185,music_resume,far,sound,,"continue the loaded song from its current position if ready and stopped (wait 1, claim voices); no callers"
 func,1ace:01b6,music_enable,far,sound,,set C5E0 bit 0; no callers
-func,1ace:01bc,music_pause,far,sound,,notes off and clear C5E0 bit 0; no callers
+func,1ace:01bc,music_disable,far,sound,,if playing: notes off and clear C5E0 bit 0; no callers
 func,1ace:01cc,music_init,far,sound,,"(device 0/1/2/4/8xh): probe hardware, load INSTR.DAT bank, select routines, else PC speaker"
 func,1ace:0272,snd_identity_chmap,near,sound,,"C748[1..cx] = 1..cx (Tandy 2, CMS 5)"
 func,1ace:027d,snd_reset_tables,near,sound,,"zero DS:C638..C799, copy default velocity/channel tables C79A -> C6B8 (A0h bytes)"
 func,1ace:02a5,snd_select_routines,near,sound,,BX = device index 0-4: C5E3 = C901[bx]; copy routine pointers C92E.. -> C906..C90E and freq tables C91A/C924 -> C916/C918; AdLib: silent snare strike
 func,1ace:02fa,instr_load,near,sound,,"SI = section: open INSTR.DAT, skip SI sections, skip name, read 162h bytes to DS:C638, DOS-alloc count*size and read the instruments (far C96A)"
 func,1ace:03ba,music_reset,near,sound,,"device all-off, clear C83D..C852; no callers"
+func,1ace:03d5,snd_nop,near,sound,,"ret: default device routine, speaker/Tandy/CMS program routine, music event hook DS:C914"
 func,1ace:03d6,snd_tick,far,sound,,"timer tick (145.65 Hz, from 0c1c:10e8): clear voice_busy, sfx_modulate, sfx_step, music fade, run due music events"
 func,1ace:048d,music_fade,near,sound,,per tick fade of master_vol C5DE (fade-in branch unreachable: bug); unused by the game
 func,1ace:04de,mus_ev_note_off,near,sound,,event 8x: device note off if voice <= 13
@@ -162,10 +467,10 @@ func,1ace:07ad,adlib_set_tl,near,sound,,"SI = voice slot index: TL = 63 - vel/2 
 func,1ace:07df,adlib_note_on,near,sound,,"BL voice, CH note, DL vel, CL fraction, DH priority: voice 9 = rhythm (CA30/C758/BD), else note-19, alloc check, key off, TL, key on"
 func,1ace:086d,note_fold,near,sound,,"fold CH into AL..AH by octaves, store voice_noteword"
 func,1ace:0884,adlib_set_freq,near,sound,,"voices 0-8: A0h+v = fnum low, B0h+v = fnum high | block<<2 | key-on shadow"
-func,1ace:08c1,adlib_note_off,near,sound,,voice 9: clear BD bit; voices 0-8: clear key-on if forced or the note matches
+func,1ace:08c1,adlib_note_off,near,sound,,"voice 9: clear BD bit, noteword[9] = 0; voices 0-8: if forced or the note matches, clear key-on and zero voice_noteword/voice_note"
 func,1ace:092a,adlib_load_instrument,near,sound,,"CH = instrument: 9 bytes -> 20/40/60/80 of both slots, byte 8 -> register C0h (sic, not C0h+voice)"
 func,1ace:09a1,adlib_program,near,sound,,voices 0-5: load instrument C638[prog]; voices 6+: voice_program = CA25[voice]
-func,1ace:09c2,adlib_all_off,near,sound,,"clear key-on B0h..B8h, BD = 20h"
+func,1ace:09c2,adlib_all_off,near,sound,,"clear key-on B0h..B8h but with the shadow of BX for every channel (bug), BD = 20h; only caller is the dead music_reset"
 func,1ace:09ed,adlib_load_bank,near,sound,,"instr_load(0), then instrument CA25[v] into voices 10..0"
 func,1ace:0a18,cms_detect,near,sound,,Game Blaster probe at 220h-22Fh
 func,1ace:0a59,cms_note_on,near,sound,,Game Blaster (parked)
@@ -193,8 +498,8 @@ func,1ace:0eea,sfx_op_wait,near,sound,,op 5 (ticks)
 func,1ace:0ef4,sfx_op_note,near,sound,,"op 6 (note, vel): key off, note on with the effect priority"
 func,1ace:0f3e,sfx_op_loop_end,near,sound,,"op 8 (x, count): count+1 passes, 0 = forever"
 func,1ace:0f70,sfx_op_loop_start,near,sound,,op 7 (x)
-func,1ace:0f78,sfx_op_end,near,sound,,"op 9 (and opcodes > 12): voice_release, reset slot"
-func,1ace:0f8d,sfx_op_reset,near,sound,,"op 10: clear slot modulation/loop state, wait 1"
+func,1ace:0f78,sfx_op_end,near,sound,,"op 9 (and opcodes > 12, e.g. 00FFh): voice_release, slot reset, pointer 0"
+func,1ace:0f8d,sfx_slot_reset,near,sound,,"op 10 and part of op 9: clear slot loop/vibrato/slide state (and CB0B), vib count 1, wait 1"
 func,1ace:0fb1,sfx_op_program,near,sound,,op 11 (p): device program with C638[p] (mapped through C638 twice on AdLib)
 func,1ace:0fcb,sfx_op_goto_engine,near,sound,,"op 12 (addr): become effect id 1 (engine) unless engine off (C900) or already playing, else end"
 func,1ace:0ffe,sfx_init,far,sound,,"(device): like music_init for the effect side, sets C5E0 bit 2"
@@ -202,22 +507,70 @@ func,1ace:1072,sfx_stop_all,far,sound,,voice_release for the voices of slots 2..
 func,1bd7:000c,dos_free,far,sound,,(far ptr): INT 21h/49h
 func,1bd8:000e,adlib_write,far,sound,,"AL = register, AH = value: 388h/389h with 6 and 35 status-read delays"
 func,1bd8:0028,adlib_detect_reset,far,sound,,"timer-based OPL detection; clears F5h..01h, 04h=60h, BDh=20h (rhythm mode), 01h=20h; AX = found"
-global,DS:0086,game_state,u8,seed,,main state machine
-global,DS:0088,protection_ok,u8,seed,,1 = copy protection passed (full game); 0 = back to menus after one run
-global,DS:008A,race_state,u8,seed,,3 = leave race
+global,DS:0080,leg_score,u32,game_flow,,"score of the leg just driven (main state 5), kept while the results pages run"
+global,DS:0084,shared_data_loaded,u8,sound,shared_loaded,"1 = SELECT/DIFFLEV/SSBJ pictures, SCENETT* sets and NEWWAVE.MUS are in memory; cleared when a stage loads T.BIN over them | NEWWAVE.MUS and menu data loaded (cleared by stage_load_objects)"
+global,DS:0086,game_state,u16,game_flow,,"main state machine (word, not u8 as in symbols.csv): FFh config, 1 title, 2 protection, 3 top scores, 4 menus, 5 race, 6 results | main state machine"
+global,DS:0088,protection_ok,u8,game_flow,,"1 = check passed: 5 lives, results, all legs; 0: 1 life, 2-minute limit, back to the menus after the first leg | 1 = copy protection passed (full game); 0 = back to menus after one run"
+global,DS:008A,race_state,u16,simulation,,"1 driving, 2 restart after a crash (clock restarts), 3 leave the leg | 3 = leave race | 1 driving; 2 resume (next frame 1); 3 leave race"
+global,DS:008C,skip_flag,u8,platform,key_hit,set by key_poll on any key; aborts the title/credits sequence | set by a key during dissolves/animations
+global,DS:008D,demo_input,u8,game_flow,,never written: key_poll would call the empty 0977:13da instead of reading keys
 global,DS:008E,music_off,u8,sound,,Ctrl-Q toggle
 global,DS:008F,sfx_off,u8,sound,,Ctrl-S toggle; set for MT-32
-global,DS:0096,snd_device_cfg,u16,sound,,TD3.CFG sound device 0-4 (3 -> 81h MT-32); after snd_init = C5E3 device id
+global,DS:0090,cfg_0090,u8,game_flow,,cleared by config_load; no reader
+global,DS:0092,joystick_on,u16,simulation,joy_enabled,"Ctrl-J sets (and calibrates), Ctrl-K clears | joystick mode (Ctrl-J on / Ctrl-K off) | 0000:0f80 Ctrl-J/K"
+global,DS:0094,joy_analog,u8,simulation,joystick_analog,"Ctrl-A 1, Ctrl-D 0 | Ctrl-A analog / Ctrl-D digital"
+global,DS:0095,auto_gearbox,u8,simulation,auto_shift,1 when skill_level < 3 (set at race start) | 1 when skill < 3
+global,DS:0096,snd_device_cfg,u16,platform,,TD3.CFG word 1 | TD3.CFG sound device 0-4 (3 -> 81h MT-32); after snd_init = C5E3 device id
+global,DS:0098,midi_flag,u16,platform,,TD3.CFG word 2 | TD3.CFG word 2
+global,DS:009A,page_cur,u16,platform,active_page cur_page,"graphics library active page (0 = screen page / 1 = back page); index into DS:90CC | page last selected with gfx_set_page; target of pic_draw | page for the 0c1c drawers: 0 = screen (A000h), 1 = RAM page"
 global,DS:009C,snd_on,u8,sound,,sound system initialised
-global,DS:00A0,timer_ticks,u16,seed,,145.6 Hz tick counter (likely); race frame loop waits for >= 5 ticks
+global,DS:009D,kbd_installed,u8,platform,,set by kbd_install 0c1c:0e2d | INT 9 hooked
+global,DS:009E,playdisk_ok,u8,game_flow,,1 after a successful playdisk_load
+global,DS:009F,skip_enabled,u8,platform,dissolve_skippable,only ever cleared: the dissolve never polls keys | dissolve_poll reads keys when set
+global,DS:00A0,tick_count,u16,platform,timer_ticks,+1 per timer tick (145.65 Hz) | 145.6 Hz tick counter (likely); race frame loop waits for >= 5 ticks
+global,DS:00A2,joy_cal_col,u8[4],game_flow,,message 5 (joystick calibration) marker x positions
+global,DS:00A6,joy_cal_row,u8[4],game_flow,,message 5 marker y positions
+global,DS:00AA,joy_dir_keys,u8[16],platform,,"direction bits -> key code: 0,92h,98h,0,94h,91h,97h,0,96h,93h,91h,0... | joystick direction bits -> key codes"
+global,DS:00BC,joy_xmin,u16,simulation,joy_x_min,joystick calibration (also 00BE centre and 00C0 max) | joystick calibration | joystick calibration
+global,DS:00BE,joy_xcentre,u16,simulation,joy_x_ctr,joystick calibration (initial 80h)
+global,DS:00C0,joy_xmax,u16,simulation,joy_x_max,joystick calibration
+global,DS:00C2,joy_x,u16,simulation,,last joystick x (00C4 previous) | joystick X reading | current joystick x
+global,DS:00C4,joy_x_prev,u16,platform,,previous X
+global,DS:00C6,joy_y_min,u16,platform,,(also 00C8 centre and 00CA max) | joystick calibration
+global,DS:00C8,joy_y_ctr,u16,platform,,joystick calibration (initial 80h)
+global,DS:00CA,joy_y_max,u16,platform,,joystick calibration
+global,DS:00CC,joy_y,u16,platform,,last joystick y (00CE previous) | joystick Y reading
+global,DS:00CE,joy_y_prev,u16,platform,,previous Y
+global,DS:00D2,rand_lo,u16,simulation,rand_seed,random() state; 0 at start | random word (low)
+global,DS:00D4,rand_hi,u16,simulation,,random word (high)
+global,DS:00D6,harderr_ptr,far ptr,game_flow,,0000:081c
+global,DS:00DA,archive_path,char[14],game_flow,,'A:dataX.dat': drive and archive letter patched by archive_open
+global,DS:00EA,cfg_video_modes,u8[3],platform,video_mode_table,"library modes for the TD3.CFG choice: 13h VGA, 0Dh EGA, 09h Tandy | 13h, 0Dh, 09h (TD3.CFG video 0/1/2 -> library mode)"
+global,DS:00EE,cfg_default_video,u8[22],platform,video_default_choice,default config choice per adapter code of 16cf:0006 | setup default per gfx_detect result
+global,DS:0104,mouse_buttons,u16,simulation,,bit0 left (brake) bit1 right (gas)
 global,DS:09C2,steering_response,u8,descriptions,,"1-9, default 4 (PLAYDISK.DAT last byte); steering rate factor 3*x+16"
+global,DS:09C4,menu_preview,u8,game_flow,,"1 while the main menu shows the 3D car: stage loaders skip the leg files, the clock does not run"
+global,DS:09C5,cur_player,u8,game_flow,,1-based player whose record is in DS:09C6
 global,DS:09C6,leg_result,u8[8],descriptions,,"current player's leg record {min,sec,hund,avg mph,u32 score}"
+global,DS:09CE,leg_dist_units,u8,game_flow,,distance of the leg (miles; km converted x5/8)
+global,DS:09CF,leg_dist_sixtieths,u8,game_flow,,1/60 units
 global,DS:09D0,race_result,u8[8],descriptions,,cumulative record over the legs so far
+global,DS:09D8,race_dist_units,u8,game_flow,,cumulative distance
+global,DS:09D9,race_dist_sixtieths,u8,game_flow,,
 global,DS:09DA,race_score,u32,descriptions,,cumulative score
+global,DS:09DE,lives,u8,simulation,,"5 (protected) or 1 at race start; -1 per crash (0e12:044e), +2 per completed leg"
 global,DS:09E0,car_slots,char[14][6],descriptions,,PLAYDISK car base names ('CCERV'); '?????' = empty
 global,DS:0A34,scene_slots,char[8][8],descriptions,,PLAYDISK scene base names ('SCENE01')
-global,DS:0A74,route_index,u8,descriptions,,route 0-2 taken in the current leg | 0..2 current alternative route
+global,DS:0A74,route_index,u8,simulation,,route 0-2 taken in the current leg | 0-2 set by 70cd from route tiles 95C9 when the cell is unchanged | 0..2 current alternative route
+global,DS:0A75,crash_count,u8,simulation,,"cleared before each race_run, +1 in 0e12:044e | lives lost in the leg"
+global,DS:0A76,leg_0a76,u8,game_flow,,cleared before each race_run
 global,DS:0A78,playdisk_label,char[18],descriptions,,'MASTER PLAY DISK ' (default 'No Play Disk')
+global,DS:0A8A,path_playdisk,char[16],game_flow,,"'A:FOOFOOFO.FOO' name buffer on the PLAY DISK drive (palettes, DATAC)"
+global,DS:0A9A,path_program,char[16],game_flow,,'A:FOOFOOFO.FOO' name buffer on the program disk drive
+global,DS:0AAA,path_playdisk_dat,char[16],game_flow,,'A:PLAYDISK.DAT'
+global,DS:0ABA,path_car,char[16],game_flow,,"'A:CCERV.LST', extension rewritten for car files"
+global,DS:0ACA,path_opponent,char[16],game_flow,,'A:CCERV.LST' for the computer cars
+global,DS:0ADA,path_scene,char[16],game_flow,,"'A:SCENETT.LST', patched to <scene><x>.<ext>"
 global,DS:0AEA,scene_name,char[19],descriptions,,scene .LST name (default 'Tom's Test Track')
 global,DS:0AFE,car_index,u16,descriptions,,selected car slot (PLAYDISK)
 global,DS:0B00,playdisk_unused_0b00,u16,descriptions,,"PLAYDISK word, no reader found"
@@ -232,11 +585,60 @@ global,DS:0B0B,leg_count,u8,descriptions,,scene .LST 13h: number of legs (5)
 global,DS:0B0C,leg_data_digit,char[9],descriptions,,"scene .LST 4Eh: per leg, digit of <scene><d>.DAT (all '1')"
 global,DS:0B16,scene_pic_pairs,u16[29],descriptions,,"scene .LST 14h: .ICN pairs, .SIC pairs, 9 x {.ALZ pairs, .BLZ pairs, picture-set digit}"
 global,DS:0B50,car_pic_pairs,u16[13],descriptions,,car .LST 13h: .ICN .SIC (unused) .BIC .SID .TOP 1.BOT 2.BOT L.BOT R.BOT .ETC FL1.LZ FL2.LZ
+global,DS:0B6A,palette,u8[768],platform,pal_buf,"palette buffer 256 x 6-bit RGB (loaded by pal_load, faded/uploaded by platform) | game palette (6-bit RGB)"
+global,DS:1186,odo_accum,u32,hud,,accumulated |velocity| (DS:1186:1188)
 global,DS:1200,car_physics,i16[35],descriptions,,"car .LST 18Bh: grip, engine drag, auto-shift points, gear ratios x100 (DS:1212 + 2*gear), steering, brakes, torque, rev limit, top speed (see descriptions.md)"
 global,DS:1212,gear_ratios,i16[8],descriptions,,"x100, index = gear (0 R, 1 N, 2.. forward)"
 global,DS:1244,car_top_speed,i16,descriptions,,speed governor in speed units (~1.64 mph)
-global,DS:1296,car_speed,u16,descriptions,,"speed magnitude, ~1.64 mph per unit"
-global,DS:129C,engine_rpm,u16,descriptions,,"engine speed, ~rpm/10"
+global,DS:1246,overrev_count,u16,simulation,,rev-limit counter; 16 -> overrev_damage
+global,DS:1248,offroad_frames,u16,simulation,,frames since last on road (9 bits); 40h -> msg 0Ch and F6 allowed
+global,DS:124A,course,u16,simulation,,direction of travel (binary angle)
+global,DS:124C,body_heading,u16,simulation,,car yaw; view_heading = & FFC0
+global,DS:124E,speed_long,i32,simulation,,signed speed along the course (1296 = |v|-ish)
+global,DS:1252,vel_x,i32,simulation,,per-frame step x (<<7 units)
+global,DS:1256,vel_z,i32,simulation,,
+global,DS:125A,vel_y,i32,simulation,,vertical velocity
+global,DS:125E,pos_x,i32,simulation,,position x << 7
+global,DS:1262,pos_z,i32,simulation,,
+global,DS:1266,pos_y,i32,simulation,,
+global,DS:126A,pos_hist1,i32[3],simulation,,position 1 frame ago
+global,DS:1276,pos_hist2,i32[3],simulation,,2 frames ago
+global,DS:1282,pos_hist3,i32[3],simulation,,3 frames ago (bounce_back)
+global,DS:128E,accel,i16,simulation,,net force / speed change of the frame
+global,DS:1290,accel_smooth,i16,simulation,,smoothed accel>>9 -> pitch
+global,DS:1292,accel_pitch,i16,simulation,,
+global,DS:1294,speed_oct,u16,simulation,,(|vx|+|vz|+2max)/12; no reader found outside
+global,DS:1296,car_speed,u16,simulation,,"speed magnitude, ~1.64 mph per unit | octagonal"
+global,DS:1298,speed_sq,u32,simulation,,car_speed^2 (low word only); no reader
+global,DS:129C,engine_rpm,u16,simulation,,"engine speed, ~rpm/10 | ~rpm/10; clamped to 1500 by engine_sound"
+global,DS:129E,rpm_prev,u16,simulation,,
+global,DS:12A0,on_ground,u8,simulation,,
+global,DS:12A1,yaw_slide,u8,simulation,,course cannot follow the body (grip_yaw_limit)
+global,DS:12A2,skid,u8,simulation,,traction limit exceeded
+global,DS:12A4,rpm_inertia,i32,simulation,,engine inertia term added to the drive force
+global,DS:12AC,lzw_src,far ptr,platform,,LZW source pointer
+global,DS:12B0,lzw_dst,far ptr,platform,,LZW output pointer
+global,DS:12B4,lzw_inbuf,u8[400h],platform,,LZW input window
+global,DS:16B8,lzw_dict_seg,u16,platform,,LZW dictionary segment
+global,DS:16BA,lzw_cur,u16,platform,,LZW code being expanded
+global,DS:16BC,lzw_old,u16,platform,,LZW previous code
+global,DS:16BE,lzw_incode,u16,platform,,LZW code as read
+global,DS:16C0,lzw_next,u16,platform,,LZW next free code
+global,DS:16C2,lzw_stack_n,u16,platform,,LZW output stack count
+global,DS:16C4,lzw_nbits,u16,platform,,LZW code width 9..12
+global,DS:16C6,lzw_maxcode,u16,platform,,1 << nbits
+global,DS:16C8,lzw_finchar,u8,platform,,first char of previous string
+global,DS:16C9,lzw_firstchar,u8,platform,,first char of current string
+global,DS:16CA,lzw_masks,u16[4],platform,,"1FFh, 3FFh, 7FFh, FFFh"
+global,DS:16D2,lzw_bitpos,u16,platform,,bit position in the input window
+global,DS:16D4,replay_pos,u16,simulation,,ring byte index & FFFh
+global,DS:16D6,replay_end,u16,simulation,,end of the last recorded frame
+global,DS:16D8,cam_moved,u8,simulation,,camera moved by hand: no auto-follow
+global,DS:16DA,msg_table,u16[34h],game_flow,message_table,near pointers to the message records | message_box text pointers
+global,DS:1900,playdisk_drive,char,game_flow,,drive letter inside message 13h
+global,DS:190C,msg_insert_label,char[17],game_flow,,play disk label inside message 14h
+global,DS:1E43,options_skill_text,u8[15],game_flow,,'n (auto-shift)' + AAh
+global,DS:1E7E,options_opponent_text,u8[15],game_flow,,Clock / n Other People / Computer Cars + AAh
 global,DS:1FBB,hi_car,u8[7],descriptions,,.HI 00h: car slot of each top-7 entry
 global,DS:1FC2,hi_scores,u32[7],descriptions,,".HI 07h: top-7 scores, best first"
 global,DS:1FDE,hi_names,u8[126],descriptions,,".HI 23h: print string, 7 x {col 1Ah, row, name[15], 80h}, last 80h -> AAh"
@@ -244,41 +646,155 @@ global,DS:205C,hi_route_best,u8[9][3][8],descriptions,,".HI A1h: best {min,sec,h
 global,DS:2134,hi_cumulative_best,u8[9][8],descriptions,,.HI 179h: best cumulative record through each leg
 global,DS:217C,hi_checksum,u8,descriptions,,".HI 1C1h: XOR of the 1C1h bytes before it, ^ 5Bh"
 global,DS:2264,car_name,char[19],descriptions,,car .LST 00h
+global,DS:2286,opp1_name,char[19],game_flow,,first computer car name (0792:0d2e)
+global,DS:229B,opp2_name,char[19],game_flow,,second computer car name
+global,DS:22BB,results_name_buf,u8[12],game_flow,,leg name copied for race_status_screen
 global,DS:2500,sprite_set,u8[],world,,<scene><d>.DAT sprite bitmaps; header words 2502/2504/2506
-global,DS:8E04,protection_sheet,u8[712],descriptions,,scene .LST 208h or MASTERQ.BIN: copy-protection code sheet
+global,DS:2502,vert_y,s16[640h],render3d,,"world-space vertices of this frame (x, z in position·4 units)"
+global,DS:2504,spr_remap_off,u16,render3d,,"pixel data start, remap table offset, record count n (incl. header)"
+global,DS:2506,spr_count,u16,render3d,,"pixel data start, remap table offset, record count n (incl. header)"
+global,DS:3182,vert_x,s16[640h],render3d,,"world-space vertices of this frame (x, z in position·4 units)"
+global,DS:3E02,vert_z,s16[640h],render3d,,"world-space vertices of this frame (x, z in position·4 units)"
+global,DS:4A82,scr_x,u16[640h],render3d,,screen x = bearing angle in 1/32 px; overlay polygons use slots 630h..63Fh
+global,DS:5702,scr_y,s16[640h],render3d,,"front-view row, 8000h = not yet projected"
+global,DS:6382,vert_depth,u16[640h],render3d,,abs(dy) + dist painter key
+global,DS:7002,vert_dist,u16[640h],render3d,,horizontal distance (position·4 units)
+global,DS:7C82,mir_y,s16[640h],render3d,,"mirror row, 8000h = not yet projected"
+global,DS:8902,spr_key,u16[98h],render3d,,depth key abs(dy) + dist (FFFFh for id 0)
+global,DS:8A32,spr_dist,u16[98h],render3d,,"horizontal distance, clamped ≥ 95CD for ids > 8"
+global,DS:8B62,spr_inst,u16[98h],render3d,,instance index ×2
+global,DS:8C92,spr_angle,u16[98h],render3d,,"screen x in 1/32 px = angle − heading + view centre (multiple of 20h, see 28eb)"
+global,DS:8E04,protection_sheet,u8[712],game_flow,,scene .LST 208h or MASTERQ.BIN: copy-protection code sheet | scene .LST 208h code sheet (dead code only)
+global,DS:90CC,page_seg,u16[2],platform,,"segments of the two 320x200 RAM pages | {A000h, seg(page 1)}"
+global,DS:90CE,page1_seg,u16,platform,,second element of page_seg
+global,DS:90D0,viewbuf_seg,u16,platform,,320x96 3D render buffer
+global,DS:90D2,mirrorbuf_seg,u16,platform,,mirror buffer = LZW dictionary block
+global,DS:90D4,dissolve_saved,u16[3],platform,,"SI, DI, ES around dissolve_poll"
+global,DS:90DA,scratch_key,u16,platform,,dissolve_poll key target / dither draw pointer
+global,DS:90DC,view_top_row,u16,platform,view_rows_param,"10h in a race, 16h in the menu preview (render3d) | screen row of the 3D view (10h)"
 global,DS:90DE,sfx_15_16_started,u8,sound,,set when effect 0Fh/10h starts
+global,DS:90E0,text_transparent,u8,platform,,1 = glyph background not drawn | no background cell when set
+global,DS:90E1,text_bg,u16,platform,,background colour << 8 | background colour << 8
+global,DS:90E3,text_fg,u16,platform,,foreground colour << 8 | foreground colour << 8
+global,DS:90E5,text_x,u16,platform,,pixel x of the next character | text x (pixels)
+global,DS:90E7,text_y,u8,platform,,pixel y of the next character row | text y (top row)
+global,DS:90E8,text_glyph,u8[8],platform,,glyph scratch
+global,DS:90F0,colour_offset,u8,platform,pal_offset,0 or 80h: added to picture colours and to the palette slot (second colour set 128-255) | 0 or 80h added to picture colours (car pictures 80h) | 0 or 80h added to picture colours
+global,DS:90F1,dissolve_cols,u8[64],platform,,dissolve column phases
+global,DS:913B,dissolve_rows,u16[8],platform,,dissolve row phases x 40
+global,DS:9153,kbd_ctrl,u8,platform,,Ctrl held
+global,DS:9154,kbd_old_int9,far ptr,platform,,saved INT 9
+global,DS:9158,kbd_prefix,u8,platform,,"0, E0h, E1h or EDh"
+global,DS:9159,kbd_last_make,u8,platform,,typematic filter
+global,DS:915A,kbd_last_scan,u8,platform,,last accepted scan (unused)
+global,DS:915B,kbd_key,u8,platform,last_key,key code from the keyboard ISR (0 = none) | last translated key code (readers clear it)
+global,DS:915C,kbd_bits,u8,simulation,kbd_dirs keys_held,"held-key bits from the keyboard ISR: 1 up, 2 down, 4 left, 8 right (numeric pad diagonals set two), 10h Enter, 20h space | held bits: 1 up 2 down 4 left 8 right 10h Enter 20h Space | ISR direction bits: 1 up 2 down 4 left 8 right 10h Enter 20h space"
+global,DS:915D,timer_chain_cnt,u8,platform,isr_chain_count,tick mod 8 | timer ISR: chain to the old INT 8 every 8th tick
 global,DS:915E,sfx_priority,u8[24],sound,,per effect id
 global,DS:9176,sfx_voice,u8[24],sound,,"voice of each effect id, FFh = none"
 global,DS:918E,sfx_script,u16[24],sound,,near pointers to effect scripts (DS:91BE..944B)
 global,DS:93E6,engine_script_note,u8,sound,,"note byte of the engine script, patched by engine_sound"
-global,DS:946A,place_rot,u8,world,,heading; bits 6-7 quarter turn
+global,DS:945E,vert_base,u16,render3d,,vertex base of the model being emitted (75c1 → 7487); temp in 3a9e/69da/6316
+global,DS:9460,dxl2,s16,render3d,polar_x sin_out,polar result x | span engine: segment-2 slopes (also temps in 6316) | polar() result x
+global,DS:9462,dxr2,s16,render3d,cos_out polar_y,polar result y (up positive) | span engine: segment-2 slopes (also temps in 6316) | polar() result z
+global,DS:9464,quad_temps,s16,render3d,,"x of top, heights to b / c"
+global,DS:946A,place_rot,u8,render3d,,"model rotation byte (7653); reused as ""flip""/""opposite"" flag by 3fe5 and 69da | heading; bits 6-7 quarter turn"
+global,DS:946B,place_nverts,u8,render3d,,loop counter (vertices / sprite children)
+global,DS:946C,coll_bits,u8,simulation,,1 hit 2 near 4 close (5ad4)
+global,DS:946E,branch_mode,u8,simulation,,0 none 1 A 2 B
+global,DS:947B,joy_bits,u8,simulation,joy_dir,joystick direction bits (8 R 4 L 2 D 1 U) + 10h button | joystick direction bits (same layout as 915C)
+global,DS:947C,shake,u8,simulation,,screen shake countdown (index into CS 0e12:0F81)
+global,DS:947D,swap_flag,u8,render3d,,4 when the atan ratio was inverted
+global,DS:947E,spr_x,u16,render3d,,"sprite centre x in px, then left x after clip"
+global,DS:9480,spr_w,u8,render3d,,"build: source w, h, row pixel count; draw: W, remaining H"
+global,DS:9481,spr_rows,u8,render3d,,"build: source w, h, row pixel count; draw: W, remaining H"
+global,DS:9482,row_m,u8,render3d,,"build: source w, h, row pixel count; draw: W, remaining H"
+global,DS:9485,tjl_flag,u8,game_flow,,"1 when the top-score name is 'TJL' (Tom Loughry): greeting only, no other reader"
+global,DS:9486,damage,u16,simulation,damage_flags,"bits 0/1 alignment; 2 suspension; 3 brakes; 5 engine; 8+gear gear broken | simulation damage bits; bit 5 (engine damage, likely) lowers the engine sound 4 semitones"
+global,DS:9488,pending_msg,u16,simulation,pending_message,message id shown by race_run at the start of the next frame | message id shown at the next race loop top | message shown at the start of the next frame
+global,DS:948A,keep_prev_state,u8,game_flow,,race_run: do not copy race_state to DS:E774 this frame
+global,DS:948B,ext_view,u8,simulation,chase_view external_view replay_active,"0 cockpit, 1 chase car / replay view (also the menu preview) | external chase-car / replay camera | chase view (F5) or replay/crash camera: physics traffic clock and collisions stop; cursor keys move the camera | instant replay: only effects 2 and 6, no engine sound, race song not started"
+global,DS:948C,frozen,u8,simulation,sim_frozen,cleared by race_run; frame_update skips the simulation when set | never set (race_run writes 0): dead freeze
+global,DS:948D,pitch_rate,i16,simulation,,
+global,DS:948F,pitch,i16,simulation,,car nose pitch (camera 9496 = pitch + BA8F)
+global,DS:9491,view_heading,u16,simulation,,body_heading & FFC0
+global,DS:9493,view_roll,u8,simulation,,= BCDC on the ground
+global,DS:9494,pos_frac_x,u8,simulation,,(pos_x & 7Fh) << 1
+global,DS:9495,pos_frac_z,u8,simulation,,
+global,DS:9496,cam_row,s16,render3d,,horizon row = pitch + BA8F
+global,DS:9498,cam_heading,u16,render3d,,"camera heading (10000h = 360°, 0 = +Z)"
+global,DS:949A,cam_x,u16,render3d,,camera cell coords (&7FFF / &3FFF)
+global,DS:949C,cam_z,u16,render3d,,camera cell coords (&7FFF / &3FFF)
+global,DS:949E,cam_y,s16,render3d,,eye height
+global,DS:94A0,cam_roll,s8,render3d,,roll shift code
+global,DS:94A1,cam_x4,u16,render3d,,camera X/Z ·4 (+2 fraction bits)
+global,DS:94A3,cam_z4,u16,render3d,,camera X/Z ·4 (+2 fraction bits)
+global,DS:94A5,cam_pitch,i16,simulation,,replay camera
+global,DS:94A7,cam_y,i16,simulation,,replay camera height
+global,DS:94A9,cam_dist,u16,simulation,,replay camera distance
+global,DS:94AB,cam_yaw,u8,simulation,,replay camera yaw (hi byte)
+global,DS:94AC,cam_elev,u8,simulation,,replay camera elevation step
+global,DS:94AD,cam_roll,u8,simulation,,
+global,DS:94AE,sprite_vis_count,u16,render3d,,"entries in the four arrays below (≥ 9, ≤ 98h)"
+global,DS:94B0,sprite_vis_first,u16,render3d,,"first k of the merge loop; static 0, no writer found"
+global,DS:94B2,replay_state,u8,simulation,replay_active replay_playing,instant replay running | 0 record; 1 play; 2 wreck animation
+global,DS:94B3,wreck_timer,u8,simulation,,20 frames
+global,DS:94B4,car_x_saved,u16,render3d,,car X/Z when not replaying
+global,DS:94B6,car_z_saved,u16,render3d,,car X/Z when not replaying
 global,DS:94B8,car_imperial,u8,descriptions,,"car .LST B2h: 1 = miles/mph (DETAIL1.LZ), 0 = km (DETAIL2.LZ; results x5/8 -> mph)"
 global,DS:94B9,car_odo_step,u32,descriptions,,"distance units per 1/60 odometer unit (50000h mile, 31999h km)"
 global,DS:94BF,car_eye_height,i16,descriptions,,camera height above the car (46)
+global,DS:94C1,near_depth,u16,render3d,,depth threshold / vertical tolerance for 34f1
+global,DS:94C3,near_dy,u16,render3d,,depth threshold / vertical tolerance for 34f1
 global,DS:94CB,car_cockpit_colour,u16,descriptions,,colour pair of the cockpit polygon drawn in the 3D view (0e12:4bf3)
+global,DS:94CD,car_cockpit_edge,u16,render3d,,dash fill / dash edge-line colour pairs (0404 / 0C0C default)
+global,DS:94CF,beam_verts,"(y, x<<5)×8",render3d,,headlight trapezoid rows 72..95
+global,DS:94E7,wiper2_dx,i16,render3d,,0x1040 = 130 px shift of the right wiper
+global,DS:94E9,wiper_radius,u16,render3d,,0x78: drops farther than this from a pivot are never wiped
+global,DS:94EB,wiper_verts,"u16 (hi=y, lo=x)",render3d,,wiper blade polygon per phase 0..4
+global,DS:9525,wiper_keys,i16,render3d,,"0x602C, 0x7FFF, 0x137, 0x8A, 8, −0x42 (angle keys, index −1..4)"
+global,DS:9531,dash_verts_crashed,"(x, y) words",render3d,,dash silhouette
+global,DS:9561,dash_verts,"(x, y) words",render3d,,dash silhouette
 global,DS:9592,leg_file,u8[8504],world,,<scene>A..E.DAT memory image up to DS:B6C9
+global,DS:9594,leg_gravity,u16,simulation,,leg file +002: 600; gravity 900/frame; snap distance 2400; grip scale
+global,DS:9596,leg_siren_alt,u8,sound,,byte 4 of the leg map <scene>A..E.DAT (loaded to DS:9592): nonzero -> effect 20 becomes 23 (two-tone siren); 0 in all shipped legs
 global,DS:9597,opp_scripts,u8[2][10],world,,opponent branch/behaviour scripts
 global,DS:95AF,traffic_speeds,u16[4],world,,
 global,DS:95B7,sprite_drift_x,s16,world,,
 global,DS:95B9,sprite_drift_z,s16,world,,
 global,DS:95BB,leg_ref_time,u16,world,,seconds; caps scoring time
+global,DS:95BE,leg_compass_offset,u8,hud,,leg header 02Ch added to the heading for the compass (Likely)
 global,DS:95BF,sprite_scale_count,u8,world,,
-global,DS:95C0,sky_colours,u8[4],world,,
+global,DS:95C0,sky_colours,u8[4],render3d,,"EGA sky (C0 / alt C1), VGA sky (C2 / alt C3); alt when 95C8"
+global,DS:95C4,ground_colour,u8[2],render3d,,"ground colour codes (lo, hi) → B4B9 pair"
 global,DS:95C7,colour_mode,u8,world,,0 = darker (8->0 7->8)
 global,DS:95C8,sky_alt,u8,world,,
 global,DS:95C9,route_tiles,u8[3],world,,tile types identifying routes 0..2 -> DS:0A74
-global,DS:95CC,traffic_turn_delay,u8,world,,
+global,DS:95CC,shuttle_period,u8,simulation,traffic_turn_delay,x4 frames (seagulls)
+global,DS:95CD,sprite_min_proj_dist,u16,render3d,,17Bh in all legs: minimum distance used for the *vertical* projection of sprites with id low byte > 8 (stops near sprites diving off the bottom)
+global,DS:95CF,sprite_hit_dist,u16,simulation,,80h
+global,DS:95D1,coll_window,u16,simulation,,FFh
 global,DS:95D3,bridge_clearance,u16,world,,surface types 14h-17h
 global,DS:95D5,lighthouse_speed,u8,world,,
 global,DS:95D6,gate_speed,u8,world,,
+global,DS:95D7,wind_dir,u16,simulation,,leg file +045 read as word: wind direction
+global,DS:95D9,point_sizes,u8[4] / u8[4],render3d,,world size of points / thick lines by w0 bits 11–12
+global,DS:95DD,line_widths,u8[4] / u8[4],render3d,,world size of points / thick lines by w0 bits 11–12
 global,DS:95E1,sprite_kind,u8[32],world,,
 global,DS:9611,sprite_anim_next,u16[48],world,,next id | delay<<8
 global,DS:9671,leg_map,u16[512],world,,32x16 cells: type | height<<8 | rot<<14; row 0 = north
 global,DS:9A71,sprite_count,u16,world,,
 global,DS:9A73,sprite_id,u16[320],world,,
+global,DS:9A83,sprite_8_type,,render3d,,sun (5) / moon (4) / none (0) placed at camera ± 0x900
 global,DS:9CF3,sprite_x,s16[320],world,,[0] = player start X
+global,DS:9D01,sprite_7_x,,render3d,,crash object in replay (94B2==2)
+global,DS:9D03,x,,render3d,,sun (5) / moon (4) / none (0) placed at camera ± 0x900
 global,DS:9F73,sprite_z,s16[320],world,,
+global,DS:9F81,z,,render3d,,crash object in replay (94B2==2)
+global,DS:9F83,z,,render3d,,sun (5) / moon (4) / none (0) placed at camera ± 0x900
 global,DS:A1F3,sprite_y,s16[320],world,,
+global,DS:A201,y,,render3d,,crash object in replay (94B2==2)
+global,DS:A203,y,,render3d,,sun (5) / moon (4) / none (0) placed at camera ± 0x900
 global,DS:A473,obj_count,u16,world,,
 global,DS:A475,obj_a475,u16,world,,moving-object scan limit (Likely)
 global,DS:A477,obj_first_static,u16,world,,
@@ -288,28 +804,252 @@ global,DS:A6F9,obj_z,s16[160],world,,
 global,DS:A839,obj_y8,u16[160],world,,height*8
 global,DS:A979,obj_heading,u16[160],world,,hi current lo target
 global,DS:AAB9,obj_pitch,u16[160],world,,hi -> BD38
+global,DS:ABF9,obj_vel,u16,render3d,,"lo = s8 vx, hi = s8 vz (per frame, position units)"
 global,DS:AD39,obj_cell,u16[160],world,,runtime cell pointer
 global,DS:AE79,obj_waypoint,u16[160],world,,runtime waypoint index / timer
-global,DS:B4B9,colour_pairs,u16[256],world,,
-global,DS:B6B9,colour_direct,u8[16],world,,
-global,DS:B6D6,throttle,u8,descriptions,,0-29
-global,DS:B6D7,gear,u8,descriptions,,"0 R, 1 N, 2.. forward"
+global,DS:AFB9,obj_vert_base,u16,render3d,,vertex range this frame
+global,DS:B0F9,obj_vert_count,u16,render3d,,vertex range this frame
+global,DS:B239,obj_face_base,u16,render3d,,face range this frame (0 count = not drawn)
+global,DS:B379,obj_face_count,u16,render3d,,face range this frame (0 count = not drawn)
+global,DS:B4B9,colour_pairs,u16[256] / u8[16],render3d,,VGA colour tables (leg file)
+global,DS:B6B9,colour_direct,u16[256] / u8[16],render3d,,VGA colour tables (leg file)
+global,DS:B6CA,mouse_on,u8,simulation,,F7
+global,DS:B6CB,mouse_div,u8,simulation,,mouse steering divisor 2..10
+global,DS:B6CC,radio_station,u8,simulation,,"music choice 0-2 ('Change radio station'), argument of music_for_state | M key 0-2 | race song 0..2 -> <scene>A/B/C.MUS; 0 at start and scene select, key M cycles"
+global,DS:B6D0,debug_flip,u8,simulation,,
+global,DS:B6D1,mirror_dirty,u8,render3d,,copy M once more (after switching mirror off / layout restore)
+global,DS:B6D2,mirror_on,u8,render3d,,rear-view mirror pass enabled (key R) | R key (Likely)
+global,DS:B6D3,f6_allowed,u8,simulation,,set after 64 frames off road
+global,DS:B6D4,replay_paused,u8,simulation,,F9 toggle | F9
+global,DS:B6D5,replay_request,u8,simulation,,F10 during a replay/message
+global,DS:B6D6,throttle,u8,simulation,,0-29 | 0..31
+global,DS:B6D7,gear,u8,simulation,,"0 R, 1 N, 2.. forward | 0 R 1 N 2.."
+global,DS:B6D8,headlights,u8,simulation,,H key (Likely)
+global,DS:B6D9,brake,u8,simulation,,0/1 (Down)/4 (Space)/5
+global,DS:B6DA,wheel_centring,u8,simulation,wheel_centering,wheel self-centring on | C key; default 1
+global,DS:B6DB,knob_hidden,u8,simulation,lever_always,show the gear lever permanently (key 44h) | D key (Likely)
+global,DS:B6DC,half_window,u8,render3d,window_half,3D view 240x64 (x 40-279 rows 16-79) | F1: 240×64 view | F1
+global,DS:B6DD,detail,u8,render3d,,"F2: 0 low, 1 medium, 2 high (visible cells, gradient sky, sprite/vehicle ranges) | F2 0-2"
+global,DS:B6DE,view_dist,u16,simulation,,700h/440h/300h by detail
+global,DS:B6E0,2,u16,render3d,,"300h / 440h / 700h by detail (B6E2 also limits sprite depth, next row)"
+global,DS:B6E2,4,u16,render3d,,"300h / 440h / 700h by detail (B6E2 also limits sprite depth, next row)"
+global,DS:B6EA,debug_keys,u8,simulation,debug_mode,debug keys + frame-time readout instead of the compass (no writer found) | 0 in the exe and never written: S/T/N keys dead
 global,DS:B6EF,key_ext_handlers,near ptr[10],seed,,handlers for key codes 81h..8Ah
-global,DS:BA9B,surface_under_car,u8,world,,w3>>11 of face under the car; 1Fh = leg finish
-global,DS:BD24,model_face_cut,u16,world,,alias table entry
-global,DS:BD2A,place_x,u16,world,,cell/object centre X
-global,DS:BD2C,place_z,u16,world,,
-global,DS:BD2E,place_y,u16,world,,
-global,DS:BD44,gfx_mode_x2,u16,seed,,current graphics mode * 2 (index into per-mode jump tables)
-global,DS:BD49,gfx_mode,u8,seed,,current graphics mode
+global,DS:B704,steer_hold,u8,simulation,,keyboard steering ramp 0..2
+global,DS:B705,prev_bits,u8,simulation,,control bits of the previous poll
+global,DS:B706,throttle_released,u8,simulation,,Up released -> car_physics searches the cruise throttle
+global,DS:B707,clock_running,u8,simulation,,set when a restart releases the car (race_run) and by the gear keys | race clock started (first gear change) | set by any gear shift and on resume; clock and traffic run only while set; the crash immunity only counts down while set
+global,DS:B708,clock_frames,u8,simulation,,frames in the current clock second (0-4) | 0-4
+global,DS:B709,clock_drawn,u8,hud,,"seconds drawn, FFh force"
+global,DS:B70A,clock_sub,u8,simulation,clock_frac,"race clock fraction 0-3 (5 frames per clock second, 0e12:0b1d) | (f + f>>1)>>1 of clock_frames; not displayed | 0-3"
+global,DS:B70B,clock_sec,u8,simulation,,race clock seconds | race clock seconds
+global,DS:B70C,clock_min,u8,simulation,,race clock minutes (stops at 59) | race clock minutes (max 59) | saturates at 59
+global,DS:B70E,frame_ticks,u8,simulation,,timer ticks the previous frame took (race_run) | timer ticks of the last frame (debug readout; steering rate) | timer ticks the previous frame took (race_run); scales the steering rate
+global,DS:B70F,radar_drawn,u8,simulation,,"radar level drawn, FFh = blank phase"
+global,DS:B710,radar_level,u8,simulation,,radar detector strength (bars = >>4) | 0..6Fh max over police
+global,DS:B711,radar_phase,u8,simulation,,frame counter for radar blink and blip
+global,DS:B712,compass_drawn,u8,hud,,"compass strip x drawn, FFh force"
+global,DS:B719,odo_digit_strip,u8[66],hud,,"3x5 digits every 6 bytes (bottom row first), wrap 0 at B755"
+global,DS:B75B,digit_font,u8[50],hud,,"4x5 digits, 1 byte per row, bottom row first"
+global,DS:B78D,crashed,u8,simulation,crash_active,set by 0e12:0f31 | crash sequence running | crash latch
+global,DS:B78E,overrev_events,u8,simulation,,
+global,DS:B78F,oct_y,u16[8],render3d,,octant tables for 394c/39fd/316c (B7AF set by 409c)
+global,DS:B79F,oct_half,u16[8],render3d,,octant tables for 394c/39fd/316c (B7AF set by 409c)
+global,DS:B7AF,oct_base,u16[8],render3d,,octant tables for 394c/39fd/316c (B7AF set by 409c)
+global,DS:B7CF,sin64,s16[65],render3d,,"Q15 sin/cos, 64 steps per quarter"
+global,DS:B851,cos64,s16[65],render3d,,"Q15 sin/cos, 64 steps per quarter"
+global,DS:B8D3,row_ofs,u16[60h] / u16[13h],render3d,,row → byte offset in V / M
+global,DS:B993,mrow_ofs,u16[60h] / u16[13h],render3d,,row → byte offset in V / M
+global,DS:B9BB,road_mem,u16[3][4],simulation,,last 3 road positions (x z y heading) every other frame
+global,DS:B9CB,restart_x,u16/u8,render3d,,restart point used by 2465 when B9D3 or B78D
+global,DS:B9D3,return_to_road,u8,simulation,,F6 request consumed by 0e12:2465
+global,DS:B9D4,spr_vis_w,u8,render3d,,visible width after horizontal clip
+global,DS:B9D5,spr_view,u8,render3d,,hi(8C92[k]) + 8; bit 7 = mirror
+global,DS:B9D6,spr_scale,u8,render3d,,"scale value (≤ 17h shrink, 18h..2Fh grow) / apparent size at draw"
+global,DS:B9D7,spr_grow,u8,render3d,,"number of 24-step octaves above 1:1 (0 shrink, 1 grow; 2, 3 unreachable)"
+global,DS:B9D8,spr_num,u8,render3d,,"current sprite id (316c stores the full low byte, 2e49 the id & 3Fh)"
+global,DS:B9D9,pad,u8,render3d,,(w − m) >> 1 for the row being scaled
+global,DS:B9DA,rows_out,u8,render3d,,output rows of the copy being built
+global,DS:B9DB,spr_h,u16,render3d,,"H of the copy being drawn (low byte written; B9DC is never written, 0)"
+global,DS:B9DE,rep_count,u8,render3d,,remaining repeats of the current stored row
+global,DS:B9DF,clip_left,u16,render3d,,pixels clipped on the left (0 = not clipped)
+global,DS:B9E1,rep_ptr,u16,render3d,,cache offset of the current repeat byte
+global,DS:B9E3,copy_hdr,u16,render3d,,"cache offset of the copy's (W, H) bytes"
+global,DS:B9E5,cache_limit,u16,render3d,,D000h
+global,DS:B9E7,copy_h,u16,render3d,,h byte (length of the repeat table) of the copy being drawn
+global,DS:B9E9,last_wh,u16,render3d,,"(W, H) of the previous step (dedup)"
+global,DS:B9EB,sprite_cache_seg,u16,render3d,,normalised segment of the cache: (E53C >> 4) + 1 + E53E; B9ED = copy set per draw
+global,DS:B9ED,seg2,u16,render3d,,normalised segment of the cache: (E53C >> 4) + 1 + E53E; B9ED = copy set per draw
+global,DS:B9EF,hmask,u8[26],render3d,,"horizontal keep mask; bytes 0-6 = entry bytes 0-6, repeated (only bytes 0-6 are reachable: w ≤ 54)"
+global,DS:BA0A,vmask,u8[3],render3d,,24-bit vertical keep mask (rotating)
+global,DS:BA0D,sprite_max_size,u8,render3d,,BA3F[95BF-1] (1Ah / 17h / 12h)
+global,DS:BA0E,size_to_step,u8[31h],render3d,,apparent size (0..30h) → step index (table below)
+global,DS:BA3F,step_to_size,u8[17],render3d,,step → scale value B9D6 used when building (table below)
+global,DS:BA55,world_rebuilt,u8,render3d,,set when 70cd rebuilt the lists (also F5/replay): sprite list rebuild + full face sort
+global,DS:BA56,veg_seed,u16,render3d,,vegetation thinning bits (by detail: all / 5555h mask / 0)
+global,DS:BA58,debris_vx,s8[3] / s8[3] / u8[3·12],render3d,,crash debris velocities and height profile
+global,DS:BA5B,debris_vz,s8[3] / s8[3] / u8[3·12],render3d,,crash debris velocities and height profile
+global,DS:BA5E,debris_h,s8[3] / s8[3] / u8[3·12],render3d,,crash debris velocities and height profile
+global,DS:BA82,msg_protect,u8,render3d,,1 after a message box: present skips 15h rows
+global,DS:BA83,roof_height,u16,render3d,overhead_y,ceiling face above the camera (bridge types 14h–17h out of clearance) | deck above the car
+global,DS:BA85,ground_height,u16,render3d,ground_y,highest ground face under the camera this frame (0 = none) | height of the ground under the car (collision code)
+global,DS:BA87,ground_y_prev,u16,simulation,,
+global,DS:BA89,ground_tri,u16×3,render3d,,its vertices (byte offsets) | 2*vertex of the ground triangle
+global,DS:BA8F,horizon_base,u16,render3d,,horizon row at zero pitch (38h / 28h)
+global,DS:BA91,view_rows,u16,render3d,,60h / 40h / 56h
+global,DS:BA93,view_bytes,u16,render3d,,BA91·140h
+global,DS:BA95,view_w32m,u16,render3d,,(width−1)·32
+global,DS:BA97,view_cx32,u16,render3d,,view centre x in 1/32 px
+global,DS:BA99,view_cx_hi,u8,render3d,,view centre / 100h (14h / 0Fh / 10h)
+global,DS:BA9A,face_type,u8,render3d,face_type_x8,"w3_hi & F8h of the face being drawn (70h for sky/ground/overlays, 0 = OR mode) | w3 hi & F8h of the face being drawn"
+global,DS:BA9B,surface_under_car,u8,render3d,surface,ground type of the face around the camera (FFh = none); ≥ 1Ch sticks | ground face type; FFh none; 1Fh finish | w3>>11 of face under the car; 1Fh = leg finish
+global,DS:BA9C,span_top,s16,render3d,,first row of the current fill
+global,DS:BA9E,sky_top,s16,render3d,,top row of the sky pass
+global,DS:BAA0,sky_pair_ega,u16,render3d,,colours of the sky / ground this frame (BAA2/BAA4 reused by the mirror)
+global,DS:BAA2,sky_pair,u16,render3d,,colours of the sky / ground this frame (BAA2/BAA4 reused by the mirror)
+global,DS:BAA4,ground_pair,u16,render3d,,colours of the sky / ground this frame (BAA2/BAA4 reused by the mirror)
+global,DS:BAA6,sky_flash,u8,render3d,,flash frames left | frames
+global,DS:BAA7,bump_frames,u8,simulation,,random vertical bumps after a hit
+global,DS:BAA8,crash_flag,u8,simulation,,cleared each frame; set by hard landing/water/solid hits -> crash_start
+global,DS:BAA9,crash_face,u16,simulation,,FFFFh each frame; face index of a hit
+global,DS:BAAB,crash_object,u16,simulation,,2*object hit (0 = scenery)
+global,DS:BAAD,invulnerable,u8,simulation,,frames of no-crash after a restart; counts down on water or gear change
+global,DS:BAAE,crash_type,u8,simulation,,never read
+global,DS:BAAF,reload2,u8,render3d,,"sides reloaded at segment 2 / 3 (bit 0 left, bit 1 right)"
+global,DS:BAB0,reload3,u8,render3d,,"sides reloaded at segment 2 / 3 (bit 0 left, bit 1 right)"
+global,DS:BAB1,colour,u16,render3d,,colour pair of the current fill (low byte on (x^y) odd)
+global,DS:BAB3,dxl,s16,render3d,,per-row x decrement of the left / right edge (1/32 px)
+global,DS:BAB5,dxr,s16,render3d,,per-row x decrement of the left / right edge (1/32 px)
+global,DS:BAB7,around_sorted,u16×3,render3d,,vertices sorted by x (3ebf)
+global,DS:BABD,dxl3,s16,render3d,,segment-3 slopes
+global,DS:BABF,dxr3,s16,render3d,,segment-3 slopes
+global,DS:BAC1,rows1,u16,render3d,,row counts of the three segments
+global,DS:BAC3,rows2,u16,render3d,,row counts of the three segments
+global,DS:BAC5,rows3,u16,render3d,,row counts of the three segments
+global,DS:BAC7,xl2,u16,render3d,,x at the start of segment 2 / 3
+global,DS:BAC9,xr2,u16,render3d,,x at the start of segment 2 / 3
+global,DS:BACB,xl3,u16,render3d,,x at the start of segment 2 / 3
+global,DS:BACD,xr3,u16,render3d,,x at the start of segment 2 / 3
+global,DS:BACF,plane_above,u8,render3d,,1 = the face around the camera is above the eye (fill upwards)
+global,DS:BAD0,face_ptr,u16,render3d,,current face record offset (overlays: DS offsets of fake records)
+global,DS:BAD2,quad_top_word,u16,render3d,,record word offset of the top vertex
+global,DS:BAD4,top_row,s16,render3d,,topmost row touched this / previous frame (present skips rows above the min)
+global,DS:BAD6,top_row_prev,s16,render3d,,topmost row touched this / previous frame (present skips rows above the min)
+global,DS:BAD8,face_count,u16,render3d,,emitted faces (≤ 640h) / vertices (≤ 630h)
+global,DS:BADA,vert_count,u16,render3d,,emitted faces (≤ 640h) / vertices (≤ 630h)
+global,DS:BADC,static_face_end,u16,render3d,,end of the world part (vehicles appended after)
+global,DS:BADE,static_vert_end,u16,render3d,,end of the world part (vehicles appended after)
+global,DS:BAE0,parked_face_end,u16,render3d,,end of parked part
+global,DS:BAE2,parked_vert_end,u16,render3d,,end of parked part
+global,DS:BAE4,clip_patch_ptrs,u16[24],render3d,,CS addresses of the immediates patched by 409c
+global,DS:BB14,precip_offsets,u16,render3d,,const pseudo-random offsets for flakes/streaks
+global,DS:BB34,drop_ring_idx,u8,render3d,,ring index 0..63
+global,DS:BB35,drop_state,u8,render3d,,"bits7-6 type (00 bug brown, 40 rain, 80 snow, C0 black), bits5-0 age; 0 = empty"
+global,DS:BB75,drop_pos,u16,render3d,,V byte offset (rand>>1)
+global,DS:BBF5,drop_key,i16,render3d,,wiper angle key; 0x8000 = unwipeable
+global,DS:BC75,rain_level,u16,simulation,,0/4/8
+global,DS:BC77,snow_level,u16,simulation,,0/4/8
+global,DS:BC79,wind_level,u16,simulation,,
+global,DS:BC7B,wipers_on,u8,render3d,,"switch; phase 0, 1..4 out, 83..81 back"
+global,DS:BC7C,wiper_phase,u8,render3d,,"switch; phase 0, 1..4 out, 83..81 back"
+global,DS:BCA5,clocked_speed,u8,simulation,,E55F at chase start (message 2Dh)
+global,DS:BCA6,tickets,u8[3],simulation,,player; opponent 1; opponent 2 (20 s each)
+global,DS:BCA8,opp_stuck,u8[3],simulation,,index 1..2
+global,DS:BCAA,opp_recover,u8[3],simulation,,index 1..2
+global,DS:BCAC,opp_overtake,u8[3],simulation,,index 1..2; 28h frames
+global,DS:BCAD,obj_timers,u8,render3d,,saturating per-frame countdowns (BCAF used by 5466)
+global,DS:BCAF,traffic_overtake,u8,simulation,,shared by traffic
+global,DS:BCB0,flash_msg,u8,simulation,,message posted when the sky flash ends
+global,DS:BCB1,uturn_obj,u16,simulation,,2i of the police car to U-turn
+global,DS:BCB3,beacon_colour,u16,render3d,,9 → 0Ch → 0Fh → 9 (+3 per beacon face) (initial 0)
+global,DS:BCB5,ticket_cooldown,u8,simulation,,150 frames
+global,DS:BCB6,pullover_count,u8,simulation,,30 -> ticket
+global,DS:BCB9,script_pos,u8[2],simulation,,opponent script index
+global,DS:BCBB,opp_time,u8[2][3],simulation,,tick sec min at finish
+global,DS:BCC1,frame8,u8,simulation,,
+global,DS:BCC3,obj_full_transform,u8,render3d,,1 = do not use the translated-vertex cache
+global,DS:BCC4,obj_move_dx,s16,render3d,,this frame's movement (dy: see 509b); scratch = box centre in 5ad4
+global,DS:BCC6,dz,s16,render3d,,this frame's movement (dy: see 509b); scratch = box centre in 5ad4
+global,DS:BCC8,dy,s16,render3d,,this frame's movement (dy: see 509b); scratch = box centre in 5ad4
+global,DS:BCCA,saved_vert_base,u16,render3d,,object's AFB9/B0F9 before 52a3
+global,DS:BCCC,count,u16,render3d,,object's AFB9/B0F9 before 52a3
+global,DS:BCCE,light_timer,u8,simulation,,90/9 frames
+global,DS:BCCF,light_phase,u8,simulation,,0-3
+global,DS:BCD0,tlight_lamp,u8,render3d,,running index 0–5 of type-11 faces this frame
+global,DS:BCD1,wiper_frame,u8,render3d,,+1 per frame
+global,DS:BCD2,lighthouse_slot,u16,render3d,,object slots noticed by 7487 (FFFFh = none)
+global,DS:BCD4,gate_slot1,u16,render3d,gate_obj,object slots noticed by 7487 (FFFFh = none) | FFFFh none
+global,DS:BCD6,gate_slot2,u16,render3d,,object slots noticed by 7487 (FFFFh = none)
+global,DS:BCD8,gate_pos,u8,simulation,,>= 10h cars stop; >= 30h barrier sprite solid
+global,DS:BCD9,train_near,u8,simulation,,
+global,DS:BCDA,train_min_d,u16,simulation,,
+global,DS:BCDC,ground_roll,u8,simulation,,
+global,DS:BCDD,ground_pitch,i16,simulation,,
+global,DS:BCDF,plane_height,s16,render3d,,6316 result
+global,DS:BCE1,pitch_shear_tab,u8[32],simulation,,constant
+global,DS:BD21,sprite_children,u8,render3d,,sprite children appended this rebuild (≤ F0h)
+global,DS:BD22,vert_overflow,u8,render3d,,1 = vertices did not fit: skip faces
+global,DS:BD23,faces_resort,u8,render3d,,full re-sort requested
+global,DS:BD24,model_face_cut,u16,render3d,,faces not emitted (tile alias) | alias table entry
+global,DS:BD26,cur_obj_slot1,u16,render3d,,"object slot·2+2 of the model being emitted, 0 = tile"
+global,DS:BD28,model_ptr,u16,render3d,,offset of the model header
+global,DS:BD2A,place_x,u16,render3d,,model origin (position units; y = height) | cell/object centre X
+global,DS:BD2C,place_z,u16,render3d,,model origin (position units; y = height)
+global,DS:BD2E,place_y,u16,render3d,,model origin (position units; y = height)
+global,DS:BD30,place_x4,u16,render3d,,origin ·4
+global,DS:BD32,place_z4,u16,render3d,,origin ·4
+global,DS:BD34,last_cell,u16,render3d,,cache key of the visible-cell list (FFFFh forces a rebuild)
+global,DS:BD36,last_octab,u16,render3d,,cache key of the visible-cell list (FFFFh forces a rebuild)
+global,DS:BD38,place_shear,s8,render3d,,pitch shear shift (0 = none)
+global,DS:BD39,frame_counter,u16,render3d,frame_count,+1 per frame_update (menu blink parity) | +1 per frame_update
+global,DS:BD3B,crash_water,u8,simulation,crash_in_water,crash was into water | crash surface was water (0Eh)
+global,DS:BD3C,water_anim,u8,simulation,water_pending water_shake,water overlay to run
+global,DS:BD3D,mirror_base,u16,render3d,,7500h + BA99·100h; mirror x = (1600h − (x − BD3D)) >> 1
+global,DS:BD3F,lzw_mirror_dirty,u8,platform,,1 after lzw_decode: mirror buffer invalid
+global,DS:BD40,gfx_draw_page,u8,platform,,draw page number
+global,DS:BD41,gfx_colour,u8,platform,,library current colour | current colour
+global,DS:BD42,gfx_colour_raw,u8,platform,,requested colour
+global,DS:BD43,gfx_copy_page,u8,platform,,copy page number
+global,DS:BD44,gfx_mode_x2,u16,platform,,mode*2 jump-table index | current graphics mode * 2 (index into per-mode jump tables)
+global,DS:BD46,mouse_present,u8,platform,,mouse driver found
+global,DS:BD47,mouse_visible,u8,platform,,cursor shown
+global,DS:BD49,gfx_mode,s8,platform,,current library mode (FFh initially) | current graphics mode
+global,DS:BD4A,gfx_visible_page,u8,platform,,visible page
+global,DS:BD4B,gfx_pen_x,s16,platform,gfx_cur_x,library current point x | pen x
+global,DS:BD4D,gfx_pen_y,s16,platform,gfx_cur_y,library current point y | pen y
+global,DS:BD4F,mouse_shift_x,u8,platform,,INT 33h x shift
+global,DS:BD50,mouse_shift_y,u8,platform,,INT 33h y shift
+global,DS:BD51,clip_x_max,s16,platform,,clip box
+global,DS:BD53,clip_x_min,s16,platform,,clip box
+global,DS:BD55,clip_y_max,s16,platform,,clip box
+global,DS:BD57,clip_y_min,s16,platform,,clip box
+global,DS:BD86,gfx_copy_seg,u16,platform,,copy page segment
+global,DS:BD88,gfx_draw_seg,u16,platform,,draw page segment
+global,DS:BD8A,gfx_visible_seg,u16,platform,,visible page segment
+global,DS:BD8C,gfx_page_seg,u16[16],platform,,page segments (13h: A000h + allocated RAM pages)
+global,DS:BDAC,gfx_colour_map,u8[256],platform,,i mod colours
+global,DS:BEAC,gfx_colour_expand,u16[256],platform,,expansion table copy (CGA/Tandy)
+global,DS:C128,mode_expand_tab,u16[22],platform,,per-mode colour expansion table ptr
+global,DS:C154,mode_interleave,u16[22],platform,,per-mode bank interleave
+global,DS:C180,mode_colours,u16[22],platform,,per-mode colour count
+global,DS:C1AC,mode_page_bytes,u16[22],platform,,per-mode page size
+global,DS:C1D8,mode_row_bytes,u16[22],platform,,per-mode bytes per row
+global,DS:C204,mode_text_cols,u16[22],platform,,per-mode text columns
+global,DS:C230,mode_video_seg,u16[22],platform,,per-mode video segment
+global,DS:C25C,mode_width,u16[22],platform,,per-mode width
+global,DS:C288,mode_height,u16[22],platform,,per-mode height
+global,DS:C302,line_vars,s16[6],platform,,Bresenham state
+global,DS:C3C3,gfx_pattern,u16,platform,,colour pattern for 2/4-bpp bitmap paths
 global,DS:C5DE,master_vol,s8,sound,,added to music velocities (fade)
 global,DS:C5E0,snd_ready,u8,sound,,"bit 0 music ready, bit 2 effects ready"
-global,DS:C5E1,snd_active,u8,sound,,"bit 0 music playing, bit 2 effect active"
+global,DS:C5E1,snd_active,u8,sound,,"bit 0 music playing, bit 2 an effect was started (cleared by every voice_release)"
 global,DS:C5E2,music_ctl,u8,sound,,"bit 4 loaded, 5 fade in, 6 fade out, 7 stop at loop point, bits 0-3 fade speed"
 global,DS:C5E3,snd_device_id,u8,sound,,"0 speaker, 1 Tandy, 2 CMS, 4 AdLib, 80h MPU-401"
+global,DS:C5E4,pit_divisor,u16,platform,,"never written: timer_install's store goes to 0C1C:C5E4 = 185f:01b4; never read | meant to be set to 2000h by timer_install, but the store runs with DS = CS and hits 185f:01b4; never read"
 global,DS:C5E6,adlib_bd,u8,sound,,shadow of OPL register BDh
 global,DS:C638,instr_progmap,u8[128],sound,,INSTR.DAT: program -> instrument (AdLib) / program sent
 global,DS:C6B8,instr_veloff,s8[128],sound,,INSTR.DAT: velocity offset per program
+global,DS:C738,instr_unused,u8[16],sound,,"INSTR.DAT table block 100h-10Fh, never read"
 global,DS:C748,instr_chmap,u8[16],sound,,INSTR.DAT: MIDI channel -> voice (>15 off)
 global,DS:C758,instr_percmap,u8[64],sound,,INSTR.DAT: percussion note 36+ -> pitch/note
 global,DS:C798,instr_count,u8,sound,,INSTR.DAT instrument count
@@ -320,12 +1060,12 @@ global,DS:C83D,music_pos,far ptr,sound,,next event
 global,DS:C841,music_status,u8,sound,,status byte of the current event
 global,DS:C842,music_halt,u8,sound,,leave the event loop
 global,DS:C843,voice_program,u8[16],sound,,
-global,DS:C853,loop_count,u16[3],sound,,
+global,DS:C853,loop_count,u16[3],sound,,per-voice loop state (index = voice); not reset by music_play: persists across songs
 global,DS:C859,loop_exit,u16[3],sound,,
 global,DS:C85F,loop_start,u16[3],sound,,
 global,DS:C865,loop_status,u16[3],sound,,
-global,DS:C86B,fade_count,u8,sound,,
-global,DS:C86C,fade_target,u8,sound,,
+global,DS:C86B,fade_count,s8,sound,,
+global,DS:C86C,fade_target,s8,sound,,
 global,DS:C86D,voice_noteword,u16[16],sound,,device note << 8 | fraction
 global,DS:C88D,voice_velocity,u8[16],sound,,
 global,DS:C8AD,voice_owner,u8[16],sound,,"0 free, 1 music, 2-4 effect slot+1"
@@ -356,10 +1096,16 @@ global,DS:C94C,dev_all_off_tbl,near ptr[5],sound,,
 global,DS:C956,dev_set_freq_tbl,near ptr[5],sound,,
 global,DS:C960,s_INSTR_DAT,char[10],sound,,
 global,DS:C96A,instr_data,far ptr,sound,,
+global,DS:C96C,instr_data_seg,u16,sound,,segment of the instrument block (offset C96A stays 0)
 global,DS:C96E,instr_handle,u16,sound,,
+global,DS:C970,instr_tmp_size,u16,sound,,"instr_load scratch: section size, then count*size"
+global,DS:C972,instr_tmp_char,u16,sound,,instr_load scratch: device-name byte
+global,DS:C974,mpu_bank_loaded,u8,sound,,MPU-401 bank loaded (parked)
 global,DS:C975,music_handlers,near ptr[8],sound,,event types 0-7
 global,DS:C985,event_len,u8[8],sound,,2 3 2 1 2 1 1 1
 global,DS:C98D,force_off,u8,sound,,
+global,DS:C98E,snd_call_target,u16,sound,,scratch for the indirect calls of snd_tick and sfx_step
+global,DS:C990,instr_ok,u16,sound,,instr_load result
 global,DS:C992,adlib_fstep,u16[12],sound,,F-number per 1/16 semitone
 global,DS:C9AA,adlib_fnum,u16[12],sound,,F-numbers for G..F#
 global,DS:C9BC,adlib_rhythm_bit,u8[11],sound,,[6..10] = 10h 08h 04h 02h 01h
@@ -367,12 +1113,15 @@ global,DS:C9C7,adlib_op_offset,u8[18],sound,,slot -> operator register offset
 global,DS:C9D9,adlib_voice_slots,u8[22],sound,,"voice -> modulator/carrier slot, FFh single operator"
 global,DS:C9EF,adlib_is_carrier,u8[18],sound,,
 global,DS:CA01,adlib_op_regs,u8[4],sound,,20h 40h 60h 80h
-global,DS:CA05,adlib_inst_tl,u8[18],sound,,instrument 40h byte per slot
+global,DS:CA05,adlib_inst_tl,u8[18],sound,,instrument 40h byte per slot; slots 16/17 overlap CA15[0..1] (harmless)
 global,DS:CA15,adlib_inst_conn,u8[16],sound,,instrument C0 bit 0 per voice (read per slot: quirk)
 global,DS:CA25,adlib_voice_inst,u8[11],sound,,default instrument per voice
 global,DS:CA30,adlib_perc_voice,u8[40],sound,,percussion note 36-75 -> rhythm voice 6-10 (15 none)
+global,DS:CA92,spk_fstep,s16[12],sound,,PC speaker PIT divisor change per 1/16 semitone (-128..-63)
+global,DS:CAAA,spk_divisor,u16[12],sound,,"PC speaker PIT divisors C1..B1 (36485..19327), shifted right by the octave"
 global,DS:CAF5,voice_sfx_id,u8[16],sound,,game effect id per voice
 global,DS:CB05,sfx_vib_step,s16[3],sound,,
+global,DS:CB0B,sfx_unused,u16[3],sound,,"cleared by sfx_slot_reset, never read"
 global,DS:CB11,sfx_vib_count,s16[3],sound,,
 global,DS:CB17,sfx_vib_period,u16[3],sound,,
 global,DS:CB1D,sfx_slide,s16[3],sound,,
@@ -382,24 +1131,86 @@ global,DS:CB2F,sfx_loop_start,u16[3],sound,,
 global,DS:CB35,sfx_loop_count,u16[3],sound,,
 global,DS:CB3B,sfx_slot_voice,u8[3],sound,,FFh = free
 global,DS:CB3C,sfx_ops,near ptr[13],sound,,opcode handlers 0-12 via [CB3C+2*op]; entry 0 overlaps sfx_slot_voice[1..2]
+global,DS:CC50,last_surface,u8,simulation,prev_surface,surface type under the car last frame | zone edge detector
+global,DS:CC51,odo_roll_tens,u8,hud,,roll offset 0-6 of the tens digit
+global,DS:CC52,look_rect_dirty,u8,game_flow,lever_shown,race_run restores a 38h x 30h rectangle from page 1 when set | gear lever on screen (area saved in page 1)
+global,DS:CC56,tach_drawn,u8,hud,,"tach step drawn, FFh force"
+global,DS:CC57,lever_target,u8,hud,,target lever step (car E565[gear])
+global,DS:CC5C,view_block,far ptr,render3d,lz_buf pic_file_buf,7810h bytes: compressed file buffer (and 3D frame segment DS:90D0) | 7810h-byte buffer for packed car pictures | malloc(7810h) for V
 global,DS:CC64,car_gauges,u16[20],descriptions,,"car .LST 8Ah: tach and speedo needles, odometer position, backing rectangles"
 global,DS:CC76,car_tach_max,u16,descriptions,,tach needle clamp in rpm>>5 steps
+global,DS:CC8C,odo_roll_units,u8,hud,,roll offset 0-6 of the units digit
+global,DS:CC8E,key_ofs,u16,render3d,,offsets (in seg E5BA) of the face key array (E5B8+4B00h) and order array (E5B8+3E80h)
+global,DS:CC92,external_panel_on,u8,game_flow,panel_shown,chase / replay panel on screen
+global,DS:CE94,lever_step,u8,hud,,current gear-lever animation step
+global,DS:CE98,chase_pic,far ptr,game_flow,pic_chase,CHASE.LZ (37Ah) | packed CHASE.LZ
+global,DS:CE9C,opp1_slot,u8,game_flow,,PLAYDISK car slot of computer car 1
+global,DS:CE9D,odo_drawn,u8,hud,,"odometer sixtieths drawn, FFh or ^80h force"
 global,DS:CE9E,lanes_set,far ptr,world,,P.BIN
+global,DS:CEA2,opp2_slot,u8,game_flow,,PLAYDISK car slot of computer car 2
+global,DS:CEA4,car_pob,far ptr,game_flow,,<car>.POB (8E8h)
 global,DS:CEA8,odo_sixtieths,u8,descriptions,,"odometer 1/60 unit (0-59), rolling digit"
+global,DS:CEAA,y_before,i32,simulation,,pos_y at the start of the frame
 global,DS:CEAE,car_colours,u8[10],descriptions,,"car .LST 80h: radar bars, odometer, needles, top-bar digits"
-global,DS:E08C,key_code,u8,seed,,pending key code for key_dispatch
-global,DS:E33A,steer_wheel,u8,descriptions,,"steering wheel position 0-32, 16 = centre"
+global,DS:CEB8,order_ofs,u16,render3d,,offsets (in seg E5BA) of the face key array (E5B8+4B00h) and order array (E5B8+3E80h)
+global,DS:E08C,key_code,u8,simulation,,pending key code for key_dispatch | pending key for key_dispatch 0e12:0084
+global,DS:E08E,crosswind,i16,simulation,,steering drift from the wind
+global,DS:E090,knob_masks,u8[6][96],hud,,"32x24 knob masks for colours 0Fh,7,8,0,0Ch,4 (+80h VGA) at E090 E0F0 E150 E1B0 E210 E270"
+global,DS:E330,unused_e330,u8,hud,,written 0 by cockpit_setup / race_run; never read
+global,DS:E332,resist,i32,simulation,,resistance force
+global,DS:E336,wind_speed,i16,simulation,,
+global,DS:E338,video_mode,u16,render3d,,"library mode in use: 13h VGA, 0Dh EGA, 09h Tandy | library mode: 13h VGA, 0Dh EGA, 09h Tandy | 13h = VGA (mode 13h), 0Dh EGA, 09h Tandy"
+global,DS:E33A,steer_wheel,u8,simulation,,"steering wheel position 0-32, 16 = centre | 0..32 centre 16"
 global,DS:E53C,sprite_cache,far ptr,world,,prescaled sprites D010h bytes
+global,DS:E540,zone_dir,u8,simulation,weather_dir,direction of the next weather step on surfaces 1Ch-1Eh
 global,DS:E541,car_unused_e541,u8[7],descriptions,,car .LST 6Fh: 0F 07 08 00 0C 04 04 in every car; no reader (the lever colours are hard-coded)
+global,DS:E548,engine_drag,i32,simulation,,
 global,DS:E54C,objects_set,far ptr,world,,O.BIN
+global,DS:E550,water_pic,far ptr,game_flow,pic_water,WATER.LZ / WATEREGA.LZ (12D4h VGA) | packed WATER.LZ (EGA WATEREGA.LZ)
+global,DS:E554,marker_mask,u8[5],hud,,8x5 steering marker glyph captured from the .ETC (colour 8Fh)
+global,DS:E55A,broke_pic,far ptr,game_flow,pic_broke,BROKE.LZ / BROKEGA.LZ (1D06h VGA) | packed BROKE.LZ (EGA BROKEGA.LZ)
 global,DS:E55E,odo_units,u8,descriptions,,odometer whole miles/km (0-99)
+global,DS:E55F,speedo_step,u8,simulation,,"speed>>2, 0 reversing, max 31 (simulation) | speed>>2 max 31 (0 in reverse)"
+global,DS:E560,msg_answer,u8,game_flow,,"message_box result: 1 = Y for 26h, digit for 32h"
+global,DS:E561,need_place,u8,simulation,car_reset_pending,race_run calls car_leg_reset on the next state change | car_place next frame
+global,DS:E562,rim_shown,u8,hud,,"rim picture on screen 0 left 1 centre 2 right, FFh force"
 global,DS:E564,car_top_gear,u8,descriptions,,"car .LST 2Dh: highest gear index (R=0, N=1)"
 global,DS:E565,car_lever_step,u8[8],descriptions,,lever animation step per gear
 global,DS:E56D,car_lever_path,u8[28][2],descriptions,,knob offsets per animation step
 global,DS:E5A5,car_gears_per_range,u8,descriptions,,1 = sequential manual; 3 = CERV two-range automatic
+global,DS:E5A6,file_handle,FILE *,game_flow,,shared stdio handle
+global,DS:E5A8,drive,i32,simulation,,engine drive force
+global,DS:E5AC,menu_choice,u16,game_flow,,"main menu item 0 race, 1 options, 2 car, 3 course, 4 play disk; +80h = chosen"
+global,DS:E5AE,tach_step,u8,simulation,,rpm>>5 clamped to CC76 (simulation) | rpm>>5 clamped to CC76
+global,DS:E5B0,remap_ptr,far ptr,render3d,,colour-code remap (E5B8+5780h)
+global,DS:E5B4,cfg_tmp,u16,game_flow,,config choice / scratch
+global,DS:E5B6,lever_hold,u8,hud,,"frames the lever stays up; 1 after a draw, 10h on arrival, 0 on a gear change"
+global,DS:E5B7,marker_pos,u8,hud,,"wheel position the steering marker is drawn at, FFh none"
+global,DS:E5B8,face_block,far ptr,render3d,face_buf,"57B0h bytes; +3E80h -> DS:CEB8, +4B00h -> DS:CC8E, +5780h -> DS:E5B0 (far pointers, not arrays) | malloc(57B0h): faces 640h×10, order, keys, remap"
+global,DS:E5BC,compass_pic,far ptr,game_flow,pic_compass,COMPASS.LZ (113h) | packed COMPASS.LZ
 global,DS:E5C0,scene_leg_names,char[9][48],descriptions,,scene .LST 58h: per leg name[12] + 3 route names[12]
 global,DS:E770,tiles_scene,far ptr,world,,<scene>T.BIN
+global,DS:E774,prev_race_state,u16,game_flow,,
+global,DS:E776,adapter,u16,platform,adapter_type,from 16cf:0006 (13h VGA) | gfx_detect result
 global,DS:E77A,scene_music_buf,far ptr,sound,,3630-byte buffer for <scene>A/B/C.MUS
 global,DS:E77E,car_steer_marker,u16[5],descriptions,,"car .LST 76h: colour, radius, angle step, centre x, centre y"
+global,DS:E788,scratch_buf,u8[79],game_flow,,"getcwd buffer (drive letter), PLAYDISK label compare, title light masks"
+global,DS:E7D8,diffleva_pic,far ptr,game_flow,,DIFFLEVA.LZ (inside the DS:E770 block)
+global,DS:E7DC,mirror_block,far ptr,render3d,dos_block lzw_dict_ptr,300h paragraphs from INT 21h/48h (segment also in DS:16B8) | LZW dictionary seg:0 | DOS block 300h paragraphs (also the LZ dictionary)
 global,DS:E7E0,tiles_shared,far ptr,world,,SCENETTT.BIN
+global,DS:E7E4,difflevb_pic,far ptr,game_flow,,DIFFLEVB.LZ (DS:E770 block + 3520h)
+global,DS:E7E8,grip,u16,simulation,,surface grip 125 dry road; 0 water
+global,DS:E7EA,difflevc_pic,far ptr,game_flow,,DIFFLEVC.LZ (DS:E770 block + 6978h)
+global,DS:E7EE,rim_wanted,u8,hud,,wheel_update scratch
 global,DS:E7F0,music_buf,far ptr,sound,,THEME.MUS / NEWWAVE.MUS (6000 bytes inside the DS:E770 block)
+global,DS:E7F4,player_recs,u8[4][27],game_flow,,"per player: leg record 8 + dist 2, cumulative record 8 + dist 2, u32 score, lives, 2 spare"
+global,DS:E860,speedo_drawn,u8,hud,,"speedo step drawn, FFh force"
+global,DS:E862,bios_mode_at_start,u16,platform,orig_video_mode,BIOS mode at startup (restored on exit) | restored at exit
+global,DS:E864,mouse_x,u16,simulation,,
+global,DS:E866,select_pic,far ptr,game_flow,,SELECT.LZ (DS:E770 block + B34Ch)
+global,DS:E86A,archive_size,u32,game_flow,,size of the entry found by archive_open
+global,DS:E86E,mouse_y,u16,simulation,,
+global,DS:EA74,ssbj_pic,far ptr,game_flow,,SSBJ.LZ (DS:E770 block + EF74h)
+global,DS:EA78,prev_external_view,u8,game_flow,,
+global,DS:EA7A,name_buf,u8[16],game_flow,,top-score name entry (15 chars + 80h) / print_score digits
+global,DS:EA84,score_text,u8[9],game_flow,,print_score output

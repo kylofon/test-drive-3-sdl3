@@ -33,9 +33,14 @@ for path in sorted(glob.glob(os.path.join(ROOT, 'port', 'spec', '*_symbols.csv')
                 continue
             rows[(kind, lin)].append((spec, name, (r.get('type') or '').strip(), (r.get('notes') or '').strip()))
 
-# Image-offset ranges owned by each spec (port/RE_GUIDE.md, "Subsystem split"); filled in as the
-# split is decided.
-RANGES = [('seed', 0x19400, 0x1ACE0)]
+# Image-offset ranges owned by each spec (port/RE_GUIDE.md, "Subsystem split"). Segment 0e12 mixes
+# update and drawing, so it has no range owner: PRIORITY decides there (and for globals).
+RANGES = [('game_flow', 0x00000, 0x09770), ('simulation', 0x09770, 0x0AB40),
+          ('platform', 0x0AB40, 0x0C1C0),         # 0ab4 helpers; 0ab4:1220 is named by simulation
+          ('platform', 0x0C1C0, 0x0E120), ('platform', 0x16CF0, 0x1ACE0), ('sound', 0x1ACE0, 0x1BE40)]
+# Most authoritative first: phase 3 specs over phase 2 format docs over the phase 1 seed.
+PRIORITY = ['render3d', 'simulation', 'platform', 'sound', 'game_flow', 'hud',
+            'objects', 'world', 'descriptions', 'seed']
 
 
 SEGS = [int(x, 16) for x in json.load(open(os.path.join(ROOT, 'port', 'tdiii_functions.json')))['segments']]
@@ -47,13 +52,15 @@ def fmt_func(lin):
 
 
 def pick(kind, addr, entries):
-    """Functions: the spec owning the address range wins. Globals: most common name, then longest notes."""
+    """Functions: the spec owning the address range wins. Otherwise (and for globals) the spec
+    highest in PRIORITY."""
     if kind == 'func':
         owner = next((r[0] for r in RANGES if r[1] <= addr < r[2]), None)
         for e in entries:
             if e[0] == owner:
                 return e
-    return max(entries, key=lambda e: (sum(1 for x in entries if x[1] == e[1]), len(e[3])))
+    rank = lambda spec: PRIORITY.index(spec) if spec in PRIORITY else len(PRIORITY)
+    return min(entries, key=lambda e: (rank(e[0]), -len(e[3])))
 
 
 conflicts = []

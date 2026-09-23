@@ -70,7 +70,7 @@ Detailed format documents (field tables, reading code, open questions):
 | `a` DATAA | `ACCO.LZ` + `ACCOCOLR.BIN`; `TITLE1/2.LZ`, `TITLEANI/CAR/LET/L2.LZ` + `TITLCOLR.BIN`, `TITL2COL.BIN`; `CREDITA/B/C.LZ` + `CREDCOLR.BIN`; `THEME.MUS`; in-game overlays `COMPASS`, `CHASE`, `WATER`, `WATEREGA`, `BROKE`, `BROKEGA` `.LZ` |
 | `b` DATAB | police `COPA/B/SEQ.LZ` + `COPCOLR.BIN`; `KEYS.LZ` + `KEYCOLR.BIN`; `SELECT.LZ`; `DIFFLEVA/B/C.LZ`; `SSBJ.LZ`; `TOPSCORA/B/C.LZ` + `TOPCOLR.BIN`; `NEWWAVE.MUS`; `MASTERQ.BIN`; shared scene data `SCENETT1.DAT`, `SCENETTA.DAT`, `SCENETTT.BIN`, `SCENETTO.BIN`, `SCENETTP.BIN` |
 | `c` DATAC | `SELCOLR.BIN`, `DIFFCOLR.BIN`, `OTWCOL.BIN` (in-game "out the window" palette), `DETAIL1/2.LZ`, `COMPASS.LZ` |
-| `d` car | `<car>COL.BIN` (cockpit palette), `<car>SC.BIN` (select-screen palette), `<car>SIC.BIN` (32 colours), `.ICN` (select picture 208×83), `.BIC` (112×83), `.SID` (112×117), `.SIC` (72×40 icon), `.ETC` (gear shift, 56×72), `.TOP` (320×16 top bar), `1.BOT` / `2.BOT` (cockpit 320×44), `L.BOT` / `R.BOT` (looking left/right 168×48), `FL1.LZ` / `FL2.LZ` (spec card pages, 208×117 / 208×200) |
+| `d` car | `<car>COL.BIN` (cockpit palette), `<car>SC.BIN` (select-screen palette), `<car>SIC.BIN` (32 colours), `.ICN` (select picture 208×83), `.BIC` (112×83), `.SID` (112×117), `.SIC` (72×40 icon), `.ETC` (gear shift, 56×72), `.TOP` (320×16 top bar), `1.BOT` / `2.BOT` (cockpit 320×44), `L.BOT` / `R.BOT` (steering wheel turned left/right, 168×48), `FL1.LZ` / `FL2.LZ` (spec card pages, 208×117 / 208×200) |
 | `e` scene | `.ICN` (banner 320×33), `.SIC` (72×40), `T.BIN` (road tiles 40h+, 65 KB), `O.BIN` / `P.BIN` (objects / lane paths; SCENE01 has 7-byte `TJL 90\xFF` placeholders and uses the shared `SCENETT` sets, flag `DS:0B15`; SCENE02 has its own), `<n>.COL` + `<n>.ALZ` (320×50) + `<n>.BLZ` (320×19) per leg n = 1..5 (legs without pictures have 7-byte placeholders), `1.DAT`, `A`..`E.DAT`, `A/B/C.MUS` |
 
 ## Pictures (Verified, `tools/td3img.py`)
@@ -82,7 +82,7 @@ Detailed format documents (field tables, reading code, open questions):
 * Decompressed: (colour, count) byte pairs. The draw call (`01f4:59ac` → VGA `0c1c:0c45`) gets the
   pair count, the width, x and the **bottom** row y: runs fill the rectangle bottom-up, left to right,
   wrapping into the row above; `DS:90F0` (0 or 80h) is added to every colour. The target is a linear
-  320×200 RAM page (segment from `DS:90CC[DS:009A]`), not VGA memory.
+  320×200 page (segment from `DS:90CC[DS:009A]`: page 0 = VGA memory A000h, page 1 = RAM).
 * Pair counts and widths are hard-coded at the call sites or kept in the car/scene `.LST`
   (`DS:0B14`..`0B68`). Widths not known from a call are found by `fit_width` (best vertical
   coherence among exact divisors).
@@ -126,3 +126,19 @@ Detailed format documents (field tables, reading code, open questions):
   behaviour details (world.md / objects.md).
 * Physical units of some physics fields (descriptions.md).
 * Listening check of the `.dro` renders against DOSBox; meaning of most effect ids (sound.md).
+
+## Errata from the phase 3 specs
+
+* objects.md: the `w1` colour code of a face goes on pixels where (x ^ y) is **odd**, not even
+  (render3d.md, span filler `0e12:41d4`).
+* world.md: `DS:95D5` / `95D6` are the lighthouse beam radius and the gate arm length (not speeds);
+  `DS:95CD` is a minimum projection distance (not a limit) (render3d.md). `DS:95BE` is most likely the
+  leg's compass north offset (hud.md). `DS:9596` set = two-tone siren (sound.md; 0 in all shipped legs).
+* descriptions.md: the third byte of a time record is neither hundredths nor tenths: the clock stores
+  0–3, the maths treats it as tenths, the record screen prints `(x % 100) / 10` (game_flow.md). The
+  odometer position `DS:CC78/CC7A` is in page-1 coordinates (inside the stored speedometer picture),
+  not screen coordinates (hud.md).
+* `L.BOT` / `R.BOT` are the steering wheel turned left / right, not look-left/right views; `COMPASS.LZ`
+  is a 152×8 heading strip (hud.md). `COPA/COPB/COPSEQ.LZ` are used only by the dead copy-protection
+  code.
+* The game runs in graphics library mode **13h** (platform.md); `DS:90CC` = {A000h, RAM page 1}.

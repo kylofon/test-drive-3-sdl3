@@ -57,7 +57,7 @@ it can be checked visually:
    map render (this became the map viewer in TD2 — worth doing early here too).
 5. `.HI`, `TD3.CFG`, `PLAYDISK.DAT`, `INSTR.DAT`, music data.
 
-### 3. Specs → `port/spec/<subsystem>.md`
+### 3. Specs — done (2026-09-23): game_flow, simulation, render3d, hud, platform, sound in `port/spec/`
 Split as in TD2, adjusted for the new engine:
 - `platform` — startup, config, memory, timer/IRQ, keyboard, joystick
 - `video` — VGA mode 13h path, page flipping, palette fades, blitters

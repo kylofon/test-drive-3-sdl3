@@ -1,0 +1,210 @@
+kind,address,name,type,notes
+func,16cf:0006,gfx_detect,int(void),"adapter: 11h/12h/13h VGA-MCGA, 0Dh/0Fh/10h EGA, 07h/0Bh mono, 09h Tandy, 04h CGA"
+func,16d9:0002,gfx_line_to,int(int x int y),"line from pen, ends inclusive; h/v lines via gfx_fill_rect_clipped; pen := end"
+func,16e5:0007,gfx_get_draw_seg,u16(void),returns DS:BD88 (Ghidra FUN_16d9_00c7)
+func,16e5:000b,gfx_get_mode,int(void),"DS:BD49, or BIOS mode (INT 10h AH=0Fh) if negative"
+func,16e6:000e,mouse_init,int(void),"INT 33h AX=0; sets BD46/BD47 and coordinate shifts BD4F/BD50; returns buttons or 0"
+func,16ec:0004,mouse_set_range,int(int x0 int x1 int y0 int y1),INT 33h AX=7/8 (shifted)
+func,16ef:0009,mouse_set_pos,int(int x int y),INT 33h AX=4 (shifted)
+func,16f1:000d,mouse_get,int(int *x int *y int *buttons),"INT 33h AX=3, unshifted, x clamped to width-1"
+func,16f5:0008,mouse_show,int(int on),INT 33h AX=1/2 on change
+func,16fb:0008,gfx_move_to,int(int x int y),pen DS:BD4B/BD4D
+func,16fc:000b,text_exit_clear,int(void),"text mode only: DOS ESC[2J, clear page if cursor not at 0,0"
+func,16ff:000b,bios_wait_ticks,int(int n),busy-wait n BIOS ticks (INT 1Ah)
+func,1703:0001,gfx_set_colour,int(int c),13h: BD41 = BD42 = c
+func,170e:0002,gfx_set_copy_page,int(int p),"13h: BD43 = p, BD86 = BD8C[p]; source of 17eb; not a display select (hud.md: gfx_show_page)"
+func,1714:000e,gfx_set_draw_page,int(int p),"13h: BD40 = p, BD88 = BD8C[p]"
+func,171b:000a,gfx_set_visible_page,int(int p),"13h: swaps page table entries and contents; TD3 calls it once with 0 (no-op)"
+func,172d:000e,gfx_alloc_page,int(int p),"13h: DOS 48h FA0h paragraphs -> BD8C[p], zeroed; returns 0 / DOS error 7,8 / 1"
+func,1736:0004,gfx_free_page,int(int p),"13h: DOS 49h, BD8C[p] = A000h"
+func,173c:0005,gfx_put_pixel,int(int x int y),clipped; 13h draw[y*320+x] = BD41
+func,173c:01ca,gfx_set_pal_reg,int(int idx int a int b int c),dead module linked for CS 1758h; EGA/VGA attribute palette
+func,1776:0008,gfx_set_display_offset,int(int x int y),"CRTC start = y*80 + x/4 after vretrace (screen shake)"
+func,1785:000b,gfx_fill_rect,int(int x0 int x1 int y0 int y1),"inclusive, unclipped, colour BD41, 13h bottom row first"
+func,17be:0009,gfx_copy_rect_to_copy_page,int(int x0 int x1 int y0 int y1),draw page -> copy page; no callers
+func,17eb:0006,gfx_copy_rect_from_copy_page,int(int x0 int x1 int y0 int y1),copy page (BD86) -> draw page (BD88)
+func,1818:0003,gfx_copy_rect,int(int x0 int x1 int y0 int y1 int dx int dy_bottom int src int dst),"page to page, rows bottom-up, dst y = bottom row"
+func,185f:000b,gfx_draw_bitmap,int(u8 *bits int bytes_per_row int rows),"1bpp at pen, set bits = BD41, rows upward; 185f:01b4 (Tandy path) is overwritten by timer_install"
+func,18b3:0004,gfx_read_bitmap,int(u8 *dst int bytes_per_row int rows),"1bpp mask of pixels == BD41 at pen, rows upward"
+func,18f3:0002,gfx_set_ega_palette,int(u16 *pal16),EGA/Tandy/13h DAC 0-15; not called in the VGA build
+func,1905:000b,gfx_set_mode,int(int mode),"mode 00..14h, <0 = adopt BIOS mode; mode*2 -> DS:BD44; TD3 VGA uses 13h (BIOS chain-4), 14h unused"
+func,192e:0005,gfx_fill_rect_clipped,int(int x0 int x1 int y0 int y1),clip then gfx_fill_rect
+func,1937:0003,gfx_clear_page,int(void),clears draw page (13h zero FA00h bytes)
+func,0c1c:0662,enable_interrupts,void(void),sti; from INT 24h handler 0000:081c
+func,0c1c:0664,joy_read_raw,u16(void),"port 201h axes -> DS:00C2/00CC unless a tick occurred; returns (~port)&30h"
+func,0c1c:06d8,joy_read,u16(void),joy_read_raw + clamp to 4*centre
+func,0c1c:0702,pit_random,int(int add),PIT ch0/ch2 sum; no callers
+func,0c1c:071c,far_normalize,u32(u16 off u16 seg),seg + off/16 : 0; no callers
+func,0c1c:0733,text_set_colours,void(int fg int bg),DS:90E3 = fg<<8; DS:90E1 = bg<<8
+func,0c1c:074c,text_goto_cell,void(int row int col),"DS:90E7 = row*8, DS:90E5 = col*8"
+func,0c1c:076b,text_goto,void(int y int col),"DS:90E7 = y, DS:90E5 = col*8"
+func,0c1c:0784,text_draw_char,void(char *c),proportional 8x8 glyph from CS:0262 + 8c; opaque bg unless DS:90E0
+func,0c1c:084e,dos_seek,int(int fh u16 lo u16 hi),INT 21h 4200h; 1 ok 0 error
+func,0c1c:0868,dos_open_read,int(char *name),INT 21h 3D00h; handle or -1
+func,0c1c:087a,dos_file_size,u16(int fh),low word of size; rewinds
+func,0c1c:08a0,dos_read,u16(void far *buf u16 n int fh),INT 21h 3Fh
+func,0c1c:08b9,dos_close,void(int fh),INT 21h 3Eh
+func,0c1c:08c5,dissolve_page1_to_0,void(void),"64 steps (8x8 ordered), 1 per tick, abort on DS:008C"
+func,0c1c:0aa5,dissolve_poll,near,"rand(); if DS:009F get_key(&DS:90DA) else DS:008C = 0"
+func,0c1c:0ae0,dac_upload_256,near,"CS:0002[768] -> DAC, 32 colours per vblank sync"
+func,0c1c:0b1d,dac_upload_128,near,DAC colours 0-127
+func,0c1c:0b5b,pal_fade_out,void(void),"16 uploads, (c*l+8)>>4, l = 15..0"
+func,0c1c:0b89,page_clear_low_colours,void(void),page DS:009A: bytes < 80h := 0
+func,0c1c:0bb7,pal_fade_out_low,void(void),fade out colours 0-127
+func,0c1c:0be5,pal_fade_in,void(void),"16 uploads, l = 1..16"
+func,0c1c:0c16,pal_black,void(void),upload 768 zeros
+func,0c1c:0c2a,pal_set,void(void),upload DS:0B6A
+func,0c1c:0c45,rle_draw_page,void(u8 *pairs int npairs int width int x int y_bottom),"(colour+DS:90F0, count) runs into page DS:009A, bottom-up"
+func,0c1c:0e2d,kbd_install,void(void),hooks INT 9 -> 0c1c:0e98; DS:009D = 1
+func,0c1c:0e7d,kbd_restore,void(void),restores INT 9 if DS:009D
+func,0c1c:0e98,kbd_isr,interrupt,"INT 9: -> DS:915B key, DS:915C dir bits, DS:9153 ctrl; own lock/LED handling; no BIOS chain"
+func,0c1c:109f,timer_install,far,"PIT ch0 divisor 2000h (145.65 Hz), hooks INT 8; its DS:C5E4 store hits 185f:01b4 (DS = CS bug)"
+func,0c1c:10cf,timer_restore,far,PIT back to 18.2 Hz and old INT 8
+func,0c1c:10e8,timer_isr,far,"INT 8: snd_tick, DS:00A0++, chain old INT 8 every 8th tick"
+func,0c1c:11f7,rect_save,void(int x0 int x1 int y0 int y1),page DS:009A rect -> DS:90D0 buffer (packed rows)
+func,0c1c:1303,rect_restore,void(int x0 int x1 int y0 int y1),inverse of rect_save
+func,0c1c:13d8,view_present,void(void),"per race frame: mirror_present, then 3D buffer DS:90D0 -> page 0 with mirror hole"
+func,0c1c:15c7,page_mirror_left_half,void(void),page DS:009A: (319-x) := (x) for x < 160
+func,0c1c:16f8,ega_shift_copy,near,EGA/Tandy helper
+func,0c1c:170a,ega_restore_rows,near,EGA path of rect_restore
+func,0c1c:1759,rle_draw_viewbuf,void(u8 *pairs int npairs int y_bottom),"320-wide runs into DS:90D0, colour 0Fh transparent"
+func,0c1c:17cd,mirror_present,near,"waits vertical retrace; copies mirror DS:90D2 to screen x 168-255 rows 11-29"
+func,0c1c:1930,view_present_ega,near,EGA path of view_present
+func,0c1c:19e4,ega_copy_planes,near,EGA helper
+func,0c1c:1b6f,ega_gc_setup,near,EGA helper
+func,0c1c:1b8a,rle_draw_dither,void(u8 *pairs int npairs int width int x int y int cont),EGA/Tandy picture draw with error diffusion (not VGA)
+func,0c1c:1e87,dither_put,near,EGA/Tandy pixel writer
+func,0c1c:1f32,print_text_bios,void(char *s int col int row),INT 10h AH=2/9 text output (setup screen and fatal messages)
+func,0ab4:000a,nop_far,void(void),empty; called by get_key
+func,0ab4:000f,lzw_alloc,int(void),"DOS 48h 300h paragraphs -> DS:16B8, DS:E7DC far ptr; also the mirror buffer"
+func,0ab4:0034,lzw_free,void(void),DOS 49h DS:16B8
+func,0ab4:0047,lzw_decode,void(void far *src void far *dst),"LZW 9-12 bits, 100h clear, 101h end; sets DS:BD3F = 1"
+func,0ab4:006a,lzw_decode_body,far,body without reset (fall-through only)
+func,0ab4:0140,lzw_fill_input,near,copy 400h source bytes to DS:12B4
+func,0ab4:015c,lzw_get_code,near,next code with input window refill
+func,0ab4:01ca,lzw_reset_width,near,"nbits 9, maxcode 200h, next 102h"
+func,0ab4:01dd,lzw_out,near,*dst++ = AL
+func,0ab4:01e9,lzw_idx3,near,BX *= 3
+func,0ab4:01f0,lzw_add_entry,near,"dict[next] = {old, firstchar}; next++"
+func,1940:0308,fopen,far,MSC 5.1 RTL
+func,1940:0334,fread,far,MSC 5.1 RTL
+func,1940:0526,fwrite,far,MSC 5.1 RTL
+func,1940:066c,_ffree,far,MSC 5.1 RTL (far heap free)
+func,1940:0681,_fmalloc,far,MSC 5.1 RTL
+func,1940:07c4,getch,far,MSC 5.1 RTL (DOS 08h)
+func,1940:07dc,getcwd,far,MSC 5.1 RTL
+func,1940:07f2,_getdcwd,far,MSC 5.1 RTL
+func,1940:08a6,_harderr,far,MSC 5.1 RTL (INT 24h hook)
+func,1940:08f3,_hardresume,far,MSC 5.1 RTL
+func,1940:08fc,_aFldiv,far,MSC 5.1 RTL long signed division
+func,1940:09cc,_aFNaldiv,far,MSC 5.1 RTL long /= (signed)
+func,1940:09f0,_aFNauldiv,far,MSC 5.1 RTL long /= (unsigned)
+func,1940:0a14,_aFuldiv,far,MSC 5.1 RTL unsigned long division
+func,1940:0a76,_aFulrem,far,MSC 5.1 RTL unsigned long remainder
+func,1940:0b88,_filbuf,far,MSC 5.1 RTL
+func,1940:0c4a,_flsbuf,far,MSC 5.1 RTL
+func,1940:1480,bdos,far,MSC 5.1 RTL
+func,1940:14dc,memcpy,far,MSC 5.1 RTL (near data)
+func,1940:1508,remove,far,MSC 5.1 RTL (INT 21h 41h)
+func,1940:156a,_getbuf,near,MSC 5.1 RTL
+global,DS:0092,joy_enabled,u16,joystick mode (Ctrl-J on / Ctrl-K off)
+global,DS:0096,snd_device_cfg,u16,TD3.CFG word 1
+global,DS:0098,midi_flag,u16,TD3.CFG word 2
+global,DS:008C,skip_flag,u8,set by a key during dissolves/animations
+global,DS:009A,page_cur,u16,"page for the 0c1c drawers: 0 = screen (A000h), 1 = RAM page"
+global,DS:009D,kbd_installed,u8,INT 9 hooked
+global,DS:009F,skip_enabled,u8,dissolve_poll reads keys when set
+global,DS:00A0,tick_count,u16,+1 per timer tick (145.65 Hz)
+global,DS:00AA,joy_dir_keys,u8[16],joystick direction bits -> key codes
+global,DS:00BC,joy_x_min,u16,joystick calibration
+global,DS:00BE,joy_x_ctr,u16,joystick calibration (initial 80h)
+global,DS:00C0,joy_x_max,u16,joystick calibration
+global,DS:00C2,joy_x,u16,joystick X reading
+global,DS:00C4,joy_x_prev,u16,previous X
+global,DS:00C6,joy_y_min,u16,joystick calibration
+global,DS:00C8,joy_y_ctr,u16,joystick calibration (initial 80h)
+global,DS:00CA,joy_y_max,u16,joystick calibration
+global,DS:00CC,joy_y,u16,joystick Y reading
+global,DS:00CE,joy_y_prev,u16,previous Y
+global,DS:00EA,cfg_video_modes,u8[3],"13h, 0Dh, 09h (TD3.CFG video 0/1/2 -> library mode)"
+global,DS:00EE,cfg_default_video,u8[22],setup default per gfx_detect result
+global,DS:0B6A,palette,u8[768],game palette (6-bit RGB)
+global,DS:12AC,lzw_src,far ptr,LZW source pointer
+global,DS:12B0,lzw_dst,far ptr,LZW output pointer
+global,DS:12B4,lzw_inbuf,u8[400h],LZW input window
+global,DS:16B8,lzw_dict_seg,u16,LZW dictionary segment
+global,DS:16BA,lzw_cur,u16,LZW code being expanded
+global,DS:16BC,lzw_old,u16,LZW previous code
+global,DS:16BE,lzw_incode,u16,LZW code as read
+global,DS:16C0,lzw_next,u16,LZW next free code
+global,DS:16C2,lzw_stack_n,u16,LZW output stack count
+global,DS:16C4,lzw_nbits,u16,LZW code width 9..12
+global,DS:16C6,lzw_maxcode,u16,1 << nbits
+global,DS:16C8,lzw_finchar,u8,first char of previous string
+global,DS:16C9,lzw_firstchar,u8,first char of current string
+global,DS:16CA,lzw_masks,u16[4],"1FFh, 3FFh, 7FFh, FFFh"
+global,DS:16D2,lzw_bitpos,u16,bit position in the input window
+global,DS:90CC,page_seg,u16[2],"{A000h, seg(page 1)}"
+global,DS:90CE,page1_seg,u16,second element of page_seg
+global,DS:90D0,viewbuf_seg,u16,320x96 3D render buffer
+global,DS:90D2,mirrorbuf_seg,u16,mirror buffer = LZW dictionary block
+global,DS:90D4,dissolve_saved,u16[3],"SI, DI, ES around dissolve_poll"
+global,DS:90DA,scratch_key,u16,dissolve_poll key target / dither draw pointer
+global,DS:90DC,view_top_row,u16,screen row of the 3D view (10h)
+global,DS:90E0,text_transparent,u8,no background cell when set
+global,DS:90E1,text_bg,u16,background colour << 8
+global,DS:90E3,text_fg,u16,foreground colour << 8
+global,DS:90E5,text_x,u16,text x (pixels)
+global,DS:90E7,text_y,u8,text y (top row)
+global,DS:90E8,text_glyph,u8[8],glyph scratch
+global,DS:90F0,colour_offset,u8,0 or 80h added to picture colours
+global,DS:90F1,dissolve_cols,u8[64],dissolve column phases
+global,DS:913B,dissolve_rows,u16[8],dissolve row phases x 40
+global,DS:9153,kbd_ctrl,u8,Ctrl held
+global,DS:9154,kbd_old_int9,far ptr,saved INT 9
+global,DS:9158,kbd_prefix,u8,"0, E0h, E1h or EDh"
+global,DS:9159,kbd_last_make,u8,typematic filter
+global,DS:915A,kbd_last_scan,u8,last accepted scan (unused)
+global,DS:915B,kbd_key,u8,last translated key code (readers clear it)
+global,DS:915C,kbd_dirs,u8,"held bits: 1 up 2 down 4 left 8 right 10h Enter 20h Space"
+global,DS:915D,timer_chain_cnt,u8,tick mod 8
+global,DS:BD3F,lzw_mirror_dirty,u8,1 after lzw_decode: mirror buffer invalid
+global,DS:BD40,gfx_draw_page,u8,draw page number
+global,DS:BD41,gfx_colour,u8,current colour
+global,DS:BD42,gfx_colour_raw,u8,requested colour
+global,DS:BD43,gfx_copy_page,u8,copy page number
+global,DS:BD44,gfx_mode_x2,u16,mode*2 jump-table index
+global,DS:BD46,mouse_present,u8,mouse driver found
+global,DS:BD47,mouse_visible,u8,cursor shown
+global,DS:BD49,gfx_mode,s8,current library mode (FFh initially)
+global,DS:BD4A,gfx_visible_page,u8,visible page
+global,DS:BD4B,gfx_pen_x,s16,pen x
+global,DS:BD4D,gfx_pen_y,s16,pen y
+global,DS:BD4F,mouse_shift_x,u8,INT 33h x shift
+global,DS:BD50,mouse_shift_y,u8,INT 33h y shift
+global,DS:BD51,clip_x_max,s16,clip box
+global,DS:BD53,clip_x_min,s16,clip box
+global,DS:BD55,clip_y_max,s16,clip box
+global,DS:BD57,clip_y_min,s16,clip box
+global,DS:BD86,gfx_copy_seg,u16,copy page segment
+global,DS:BD88,gfx_draw_seg,u16,draw page segment
+global,DS:BD8A,gfx_visible_seg,u16,visible page segment
+global,DS:BD8C,gfx_page_seg,u16[16],page segments (13h: A000h + allocated RAM pages)
+global,DS:BDAC,gfx_colour_map,u8[256],i mod colours
+global,DS:BEAC,gfx_colour_expand,u16[256],expansion table copy (CGA/Tandy)
+global,DS:C128,mode_expand_tab,u16[22],per-mode colour expansion table ptr
+global,DS:C154,mode_interleave,u16[22],per-mode bank interleave
+global,DS:C180,mode_colours,u16[22],per-mode colour count
+global,DS:C1AC,mode_page_bytes,u16[22],per-mode page size
+global,DS:C1D8,mode_row_bytes,u16[22],per-mode bytes per row
+global,DS:C204,mode_text_cols,u16[22],per-mode text columns
+global,DS:C230,mode_video_seg,u16[22],per-mode video segment
+global,DS:C25C,mode_width,u16[22],per-mode width
+global,DS:C288,mode_height,u16[22],per-mode height
+global,DS:C302,line_vars,s16[6],Bresenham state
+global,DS:C3C3,gfx_pattern,u16,colour pattern for 2/4-bpp bitmap paths
+global,DS:C5E4,pit_divisor,u16,"never written: timer_install's store goes to 0C1C:C5E4 = 185f:01b4; never read"
+global,DS:E338,video_mode,u16,"library mode: 13h VGA, 0Dh EGA, 09h Tandy"
+global,DS:E776,adapter,u16,gfx_detect result
+global,DS:E7DC,lzw_dict_ptr,far ptr,LZW dictionary seg:0
+global,DS:E862,bios_mode_at_start,u16,restored at exit

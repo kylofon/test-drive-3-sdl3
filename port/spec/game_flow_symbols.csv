@@ -1,0 +1,187 @@
+kind,address,name,type,notes
+func,0000:0000,main,void(void),"state machine on DS:0086: FFh config, 1 title, 2 protection check, 3 top scores, 4 menus, 5 race (legs x players, results math), 6 = between legs"
+func,0000:07e4,exit_to_dos,far void(void),"snd_shutdown, mem_free_all, gfx 1736(1), restore BIOS mode DS:E862, 16fc:000b, kbd_restore, exit(0)"
+func,0000:081c,harderr_handler,far void(u16 deverr u8 errcode),"INT 24h handler installed with _harderr: code 0 -> message 23h 'Write Protect?', 2 -> 24h 'Drive Not Ready?', then _hardresume(1 = retry); other codes -> fatal_exit(5)"
+func,0000:0874,fatal_exit,far void(int code),"shutdown + text message: 1 RAM (DS:0106+0137), 2 file open (015B), 3 .HI write (0189), 5 hardware (01BB), else 01E9; exit(code)"
+func,0000:092a,config_load,far void(void),"reads TD3.CFG or asks on the text screen (video 1-4, sound 1-5, save Y/N), sets DS:E338 = DS:00EA[video], DS:0096, DS:0098; sets the graphics mode, allocates 2 pages (8 -> fatal 1), DS:90CC/90CE = page segments"
+func,0000:0ce6,cfg_show_video_choice,far void(char n),text-mode digit at col 20h row 8
+func,0000:0d0e,cfg_show_sound_choice,far void(char n),text-mode digit at col 20h row 11h
+func,0000:0d36,cfg_show_yes_no,far void(int yes),"text-mode 'N' (DS:0442) / 'Y' (DS:0444) at col 2Ch row 15h"
+func,0000:0d62,pal_load,far void(char *name),"112 colours (336 bytes) -> DS:0B6A palette buffer at colour 16 + DS:90F0; applied at once in VGA unless game_state == 5"
+func,0000:0df6,pal_load_32,far void(char *name),32 colours (96 bytes) -> palette buffer at colour 48 + DS:90F0 (car SIC.BIN)
+func,0000:0e74,file_load_near,far void(char *name u8 *dst),"archive_open, read whole entry (size-1 when archived, file size otherwise) to a DS buffer"
+func,0000:0ee0,file_load_far,far void(char *name void far *dst),"same as file_load_near into a far buffer; sets DS:E86A = bytes read, DS:E86C = 0"
+func,0000:0f58,random,far u16(void),"seed DS:00D2 (u32) = seed*41C64E6Dh + 3039h; returns (seed >> 16) & 7FFFh (not the MSC rand constants)"
+func,0000:0f80,key_poll,far void(u16 *key),"takes DS:915B (or joystick keys), handles the hotkeys Esc/Ctrl-P/Q/S/E/J/K/A/D, stores the result in *key and DS:E08C; any key -> DS:008C = 1 (hud: key_read, platform: get_key)"
+func,0000:11d2,mem_alloc_all,far void(void),"allocates the 13 far buffers + a 300h-paragraph DOS block; any failure -> fatal_exit(1) (the 'RAM check')"
+func,0000:1442,mem_free_all,far void(void),frees the buffers of mem_alloc_all and the DOS block
+func,0000:1518,nop_1518,far void(void),empty
+func,0000:151a,nop_151a,far void(void),empty
+func,0000:151c,archive_open,far int(char *name),"looks the name (without drive) up in the DS:049E directory; builds A:DATAx.DAT / car .DAT / scene .DAT, opens it (prompting for the disk until it opens), seeks to the entry, DS:E86A:E86C = size; returns handle or 0 if not archived"
+func,0000:16d0,name_hash_h1,far int(char *s int mul),h = h*mul + c over the characters from last to first (signed chars)
+func,0000:171a,name_hash_h2,far int(char *s),sum c[i]*i over all characters except the last
+func,0000:1760,name_hash,far u32(char *s),"(h1(s,101h) << 16) | h2(s), the archive directory key (FORMATS.md)"
+func,0000:179c,message_box,far void(int id),"message DS:16DA[id] in a grey box at y 71h-85h; per-id wait/prompt behaviour (Y/N, drive letter, steering 1-9, joystick calibration...)"
+func,0000:1e44,joystick_keys,far u16(u16 *key),"if DS:0092: read joystick, button -> 0Dh, else direction -> DS:00AA[DS:947B & 0Fh] (arrow codes)"
+func,0000:1ea4,joystick_direction,far void(void),"widens the calibration min/max (DS:00BC/00C0, 00C6/00CA) and adds direction bits to DS:947B: 8 right, 4 left, 2 down, 1 up"
+func,01f4:000e,player_rec_load,far void(void),copies 25 bytes of player DS:09C5 (1-based) from DS:E7F4 + 1Bh*(p-1) to DS:09C6
+func,01f4:003e,player_rec_save,far void(void),copies DS:09C6 (25 bytes) back to the player's record
+func,01f4:0070,title_sequence,far int(void),"Accolade logo + light sweep, TITLE1/2 (mirrored), TITLEANI/LET/L2/CAR animation, credits pictures and the credits text; any key aborts; returns 0"
+func,01f4:0a96,top_score_enter,far void(void),"name entry (14 chars), 'TJL' cheat flag DS:9485, inserts DS:09DA / DS:0AFE / name into the top-7 table, hi_write"
+func,01f4:0f4e,top_scores_screen,far int(int unused),"TOPSCORA/B/C.LZ + TOPCOLR.BIN; title, scene name, 7 scores + car names + hi_names; your score if 1 player; waits for a key; clears DS:09DA"
+func,01f4:12d4,print_score,far void(u32 score),8-digit decimal without leading zeros (digits DS:EA7A.. -> DS:EA84 + 80h) printed with print_text
+func,01f4:144c,main_menu,far int(void),"SELECT.LZ screen with a rotating 3D car (frame_update/frame_draw with DS:09C4 = 1); arrows move DS:E5AC (0 = race, 1 options, 2 car, 3 course, 4 play disk), Enter returns it"
+func,01f4:1864,gfx_frame,far void(int x0 int x1 int y0 int y1),rectangle outline (name from hud.md)
+func,01f4:18b0,menu_box_draw,far void(int item int colour int colour2),"frame around menu item (0 = big top box, 1-4 = bottom boxes 80 px apart); colour2 == 0 adds a colour-1 shadow"
+func,01f4:19f4,credits_text,far int(char *list),"prints each AAh-ended string at (y 3, col 1) for 27h x 2 BIOS ticks until a 00 00 pair; key aborts"
+func,01f4:1a82,print_records,far int(u8 *s int off),"prints records {col,row,text} ended by 80h (next record) or AAh (end); returns the offset after AAh"
+func,01f4:1ad6,print_text,far int(u8 *s int off),prints characters until a byte >= 80h at the current text position; returns offset after it
+func,01f4:1b0a,print_record,far int(u8 *s int off),"one {col,row,text} record; returns offset after its terminator"
+func,01f4:1b58,print_chars,far void(u8 *s int n),prints n characters
+func,01f4:1b8e,wait_key,far int(int n),"n-1 x (delay 2 BIOS ticks, random, key_poll); returns the key (low byte) or n on timeout; n = 0 waits forever"
+func,01f4:1be2,screen_present,far void(void),active page 0 + dissolve of page 1 onto the screen (0c1c:08c5)
+func,01f4:1c00,ega_pal_black,far void(void),clears DS:E788[32]; non-VGA: EGA palette from it (all black)
+func,01f4:1c34,ega_pal_restore,far void(void),non-VGA: EGA palette from DS:0E6A
+func,01f4:1c48,pal_apply,far void(void),VGA: upload the DS:0B6A palette buffer (0c1c:0c2a)
+func,01f4:1c56,pal_black,far void(void),VGA: all 256 colours black (0c1c:0c16)
+func,01f4:1c64,pal_fade_in,far void(void),VGA: fade in over 16 steps (0c1c:0be5)
+func,01f4:1c72,pal_fade_out,far void(void),VGA: fade out over 16 steps (0c1c:0b5b)
+func,01f4:1c80,pal_fade_out_low,far void(void),VGA: fade out colours 0-127 only (0c1c:0bb7)
+func,01f4:1c8e,page_keep_high,far void(void),VGA: on the active page every pixel < 80h becomes 0 (0c1c:0b89)
+func,01f4:1c9c,ega_pal_init,far void(void),"Tandy (mode 9): remap DS:0E6A to 4-bit values; EGA/Tandy: set the palette registers"
+func,01f4:1ec2,copy_protection_check,far int(void),"returns 0 = passed; the check is patched out with NOPs in this copy, dead code follows (01f4:1ed7-01f4:262a)"
+func,01f4:262a,protection_picture_draw,far void(int n int x),dead code (protection): copies a 64x24 cell n of page 1 (x 80h+64*(n/6)) to page 0
+func,01f4:26fe,playdisk_prompt,far void(void),"message 13h (drive letter), 10h (insert disk) until playdisk_load succeeds, then playdisk_screen"
+func,01f4:40ce,race_status_screen,far void(void),"after a leg with several players or computer cars: RACE STATUS page, each car's leg and cumulative records, winner / tie / lost message"
+func,01f4:470e,results_frame_draw,far void(int status_page),"page 1: black bottom, grey panel 4Bh-BDh with frame lines, DETAIL1/2.LZ (units), boxes; 1 = race status layout, 0 = scorecard layout"
+func,01f4:55f0,opponent_results,far void(void),"computer cars 1 and 2 (records DS:E80F / DS:E82A): average speed, leg score and cumulative time/distance/average/score, same arithmetic as main"
+func,01f4:59ac,pic_draw,far void(u8 *pairs int npairs int width int x int ybottom int flag),"VGA: rle_draw_page 0c1c:0c45 (flag unused); else rle_draw_dither 0c1c:1b8a (name from hud.md)"
+func,0792:000c,race_run,far void(void),"one leg for one player: stage load, cockpit build, frame loop (frame_update, race_input 0, frame_draw, race_input 1, HUD, blit, race_input 2, surface events), >= 5 ticks per frame; returns when DS:008A = 3"
+func,0792:0414,race_input,far void(int phase),"phase 0/1: joystick keys (phase 1 only when the last frame took >= 29h ticks) + key_dispatch; phase 2: key_poll + 0e12:0084; then wheel auto-centring and 0792:1310"
+func,0792:04ca,chase_view_exit,far void(void),"back to the cockpit view: music, top bar and cockpit from page 1, compass strip, HUD caches = FFh (name from hud.md)"
+func,0792:059a,chase_view_enter,far void(void),"music off, save top bar rows 0-15 to page 1, blank them, replay_panel_draw, DS:CC92 = 1 (name from hud.md)"
+func,0792:0602,replay_panel_draw,far void(void),"CHASE.LZ panel rows 70h-C7h, CHASE CAR VIEW / INSTANT REPLAY + button and viewpoint labels; message 17h when a replay starts (name from hud.md)"
+func,0792:083c,car_leg_reset,far void(void),"start or restart of a leg: clear replay buffer, physics state, wheel 16, heading and 32-bit position from the start object, eye height; music"
+func,0792:0922,cockpit_setup,far void(void),"(hud) palettes OTWCOL + <car>COL, cockpit pictures, .ETC and knob masks, backings, L/R.BOT, first frame"
+func,0792:0cec,view_first_frame,far void(void),"frame_update, frame_draw, view_present unless chase view, page 0 (name from hud.md)"
+func,0792:0d2e,stage_load_objects,far void(void),"leg start: 3D window geometry, reset clocks/odometer, race_state 1; loads <scene>1.DAT sprites, leg map, T/O/P.BIN, car .POB, opponents' names and .POB; leg_state_reset; fade out (alias stage_load)"
+func,0792:0fce,leg_map_load,far void(void),"loads <scene><'A'+leg>.DAT to DS:9592; no computer cars -> DS:A47B = 2Fh, DS:A47D = 22AFh; colour-pair fix-ups"
+func,0792:10a6,hud_reset_topbar,far void(void),"DS:B709 = FFh; DS:BD34 = FFFFh unless race_state 2; page 0 (name from hud.md)"
+func,0792:19ca,water_overlay_start,far void(void),"(hud) WATER.LZ on page 1, sound 6, first water_roll_step; called by race_run on a crash into water"
+func,0792:1a72,water_roll_step,far void(void),"(hud) one step of the rolling water picture; half-window variant waits 1 BIOS tick"
+func,0792:1c00,broken_glass_overlay,far void(void),"(hud) sound 2, BROKE.LZ over the 3D buffer (colour 0Fh transparent), view_present"
+func,0792:1c66,cockpit_pictures_draw,far void(int ybottom),"(hud) 2.BOT, 1.BOT (+ .TOP and page copy when C7h), COMPASS strip"
+global,DS:0080,leg_score,u32,"score of the leg just driven (main state 5), kept while the results pages run"
+global,DS:0084,shared_loaded,u8,"1 = SELECT/DIFFLEV/SSBJ pictures, SCENETT* sets and NEWWAVE.MUS are in memory; cleared when a stage loads T.BIN over them"
+global,DS:0086,game_state,u16,"main state machine (word, not u8 as in symbols.csv): FFh config, 1 title, 2 protection, 3 top scores, 4 menus, 5 race, 6 results"
+global,DS:0088,protection_ok,u8,"1 = check passed: 5 lives, results, all legs; 0: 1 life, 2-minute limit, back to the menus after the first leg"
+global,DS:008A,race_state,u16,"1 driving, 2 restart after a crash (clock restarts), 3 leave the leg"
+global,DS:008C,key_hit,u8,set by key_poll on any key; aborts the title/credits sequence
+global,DS:008D,demo_input,u8,never written: key_poll would call the empty 0977:13da instead of reading keys
+global,DS:0090,cfg_0090,u8,cleared by config_load; no reader
+global,DS:0092,joystick_on,u8,"Ctrl-J sets (and calibrates), Ctrl-K clears"
+global,DS:0094,joystick_analog,u8,"Ctrl-A 1, Ctrl-D 0"
+global,DS:0095,auto_shift,u8,1 when skill_level < 3 (set at race start)
+global,DS:0098,midi_flag,u16,TD3.CFG word 2
+global,DS:009A,active_page,u16,graphics library active page (0 = screen page / 1 = back page); index into DS:90CC
+global,DS:009D,kbd_installed,u8,set by kbd_install 0c1c:0e2d
+global,DS:009E,playdisk_ok,u8,1 after a successful playdisk_load
+global,DS:009F,dissolve_skippable,u8,only ever cleared: the dissolve never polls keys
+global,DS:00A2,joy_cal_col,u8[4],message 5 (joystick calibration) marker x positions
+global,DS:00A6,joy_cal_row,u8[4],message 5 marker y positions
+global,DS:00AA,joy_dir_keys,u8[16],"direction bits -> key code: 0,92h,98h,0,94h,91h,97h,0,96h,93h,91h,0..."
+global,DS:00BC,joy_x_min,u16,joystick calibration (also 00BE centre and 00C0 max)
+global,DS:00C2,joy_x,u16,last joystick x (00C4 previous)
+global,DS:00C6,joy_y_min,u16,(also 00C8 centre and 00CA max)
+global,DS:00CC,joy_y,u16,last joystick y (00CE previous)
+global,DS:00D2,rand_seed,u32,random() state; 0 at start
+global,DS:00D6,harderr_ptr,far ptr,0000:081c
+global,DS:00DA,archive_path,char[14],"'A:dataX.dat': drive and archive letter patched by archive_open"
+global,DS:00EA,video_mode_table,u8[3],"library modes for the TD3.CFG choice: 13h VGA, 0Dh EGA, 09h Tandy"
+global,DS:00EE,video_default_choice,u8[22],default config choice per adapter code of 16cf:0006
+global,DS:09C4,menu_preview,u8,"1 while the main menu shows the 3D car: stage loaders skip the leg files, the clock does not run"
+global,DS:09C5,cur_player,u8,1-based player whose record is in DS:09C6
+global,DS:09CE,leg_dist_units,u8,distance of the leg (miles; km converted x5/8)
+global,DS:09CF,leg_dist_sixtieths,u8,1/60 units
+global,DS:09D8,race_dist_units,u8,cumulative distance
+global,DS:09D9,race_dist_sixtieths,u8,
+global,DS:09DE,lives,u8,"5 (protected) or 1 at race start; -1 per crash (0e12:044e), +2 per completed leg"
+global,DS:0A75,crash_count,u8,"cleared before each race_run, +1 in 0e12:044e"
+global,DS:0A76,leg_0a76,u8,cleared before each race_run
+global,DS:0A8A,path_playdisk,char[16],"'A:FOOFOOFO.FOO' name buffer on the PLAY DISK drive (palettes, DATAC)"
+global,DS:0A9A,path_program,char[16],'A:FOOFOOFO.FOO' name buffer on the program disk drive
+global,DS:0AAA,path_playdisk_dat,char[16],'A:PLAYDISK.DAT'
+global,DS:0ABA,path_car,char[16],"'A:CCERV.LST', extension rewritten for car files"
+global,DS:0ACA,path_opponent,char[16],'A:CCERV.LST' for the computer cars
+global,DS:0ADA,path_scene,char[16],"'A:SCENETT.LST', patched to <scene><x>.<ext>"
+global,DS:0B6A,pal_buf,u8[768],"palette buffer 256 x 6-bit RGB (loaded by pal_load, faded/uploaded by platform)"
+global,DS:1900,playdisk_drive,char,drive letter inside message 13h
+global,DS:190C,msg_insert_label,char[17],play disk label inside message 14h
+global,DS:16DA,msg_table,u16[34h],near pointers to the message records
+global,DS:1E43,options_skill_text,u8[15],'n (auto-shift)' + AAh
+global,DS:1E7E,options_opponent_text,u8[15],Clock / n Other People / Computer Cars + AAh
+global,DS:2286,opp1_name,char[19],first computer car name (0792:0d2e)
+global,DS:229B,opp2_name,char[19],second computer car name
+global,DS:22BB,results_name_buf,u8[12],leg name copied for race_status_screen
+global,DS:8E04,protection_sheet,u8[712],scene .LST 208h code sheet (dead code only)
+global,DS:9485,tjl_flag,u8,"1 when the top-score name is 'TJL' (Tom Loughry): greeting only, no other reader"
+global,DS:915C,keys_held,u8,"held-key bits from the keyboard ISR: 1 up, 2 down, 4 left, 8 right (numeric pad diagonals set two), 10h Enter, 20h space"
+global,DS:9488,pending_msg,u16,message id shown by race_run at the start of the next frame
+global,DS:948A,keep_prev_state,u8,race_run: do not copy race_state to DS:E774 this frame
+global,DS:948B,external_view,u8,"0 cockpit, 1 chase car / replay view (also the menu preview)"
+global,DS:948C,sim_frozen,u8,cleared by race_run; frame_update skips the simulation when set
+global,DS:94B2,replay_active,u8,
+global,DS:915B,last_key,u8,key code from the keyboard ISR (0 = none)
+global,DS:947B,joy_dir,u8,joystick direction bits (8 R 4 L 2 D 1 U) + 10h button
+global,DS:90CC,page_seg,u16[2],segments of the two 320x200 RAM pages
+global,DS:90DC,view_rows_param,u16,"10h in a race, 16h in the menu preview (render3d)"
+global,DS:90E0,text_transparent,u8,1 = glyph background not drawn
+global,DS:90E1,text_bg,u16,background colour << 8
+global,DS:90E3,text_fg,u16,foreground colour << 8
+global,DS:90E5,text_x,u16,pixel x of the next character
+global,DS:90E7,text_y,u16,pixel y of the next character row
+global,DS:90F0,pal_offset,u8,"0 or 80h: added to picture colours and to the palette slot (second colour set 128-255)"
+global,DS:B6CC,radio_station,u8,"music choice 0-2 ('Change radio station'), argument of music_for_state"
+global,DS:B707,clock_running,u8,set when a restart releases the car (race_run) and by the gear keys
+global,DS:B70A,clock_frac,u8,"race clock fraction 0-3 (5 frames per clock second, 0e12:0b1d)"
+global,DS:B70B,clock_sec,u8,race clock seconds
+global,DS:B70C,clock_min,u8,race clock minutes (stops at 59)
+global,DS:B70E,frame_ticks,u8,timer ticks the previous frame took (race_run)
+global,DS:B78D,crashed,u8,set by 0e12:0f31
+global,DS:BD39,frame_count,u8,+1 per frame_update (menu blink parity)
+global,DS:BD3B,crash_water,u8,crash was into water
+global,DS:BD3C,water_shake,u8,
+global,DS:CC50,prev_surface,u8,surface type under the car last frame
+global,DS:CC52,look_rect_dirty,u8,race_run restores a 38h x 30h rectangle from page 1 when set
+global,DS:CC92,external_panel_on,u8,
+global,DS:CE9C,opp1_slot,u8,PLAYDISK car slot of computer car 1
+global,DS:CEA2,opp2_slot,u8,PLAYDISK car slot of computer car 2
+global,DS:E338,video_mode,u16,"library mode in use: 13h VGA, 0Dh EGA, 09h Tandy"
+global,DS:E540,weather_dir,u8,direction of the next weather step on surfaces 1Ch-1Eh
+global,DS:E560,msg_answer,u8,"message_box result: 1 = Y for 26h, digit for 32h"
+global,DS:E561,car_reset_pending,u8,race_run calls car_leg_reset on the next state change
+global,DS:E5A6,file_handle,FILE *,shared stdio handle
+global,DS:E5AC,menu_choice,u16,"main menu item 0 race, 1 options, 2 car, 3 course, 4 play disk; +80h = chosen"
+global,DS:E5B4,cfg_tmp,u16,config choice / scratch
+global,DS:E774,prev_race_state,u16,
+global,DS:E776,adapter_type,u16,from 16cf:0006 (13h VGA)
+global,DS:E788,scratch_buf,u8[79],"getcwd buffer (drive letter), PLAYDISK label compare, title light masks"
+global,DS:E7F4,player_recs,u8[4][27],"per player: leg record 8 + dist 2, cumulative record 8 + dist 2, u32 score, lives, 2 spare"
+global,DS:E862,orig_video_mode,u16,BIOS mode at startup (restored on exit)
+global,DS:E86A,archive_size,u32,size of the entry found by archive_open
+global,DS:EA78,prev_external_view,u8,
+global,DS:EA7A,name_buf,u8[16],top-score name entry (15 chars + 80h) / print_score digits
+global,DS:EA84,score_text,u8[9],print_score output
+global,DS:E5B8,face_buf,far ptr,"57B0h bytes; +3E80h -> DS:CEB8, +4B00h -> DS:CC8E, +5780h -> DS:E5B0 (far pointers, not arrays)"
+global,DS:CC5C,lz_buf,far ptr,7810h bytes: compressed file buffer (and 3D frame segment DS:90D0)
+global,DS:E550,water_pic,far ptr,WATER.LZ / WATEREGA.LZ (12D4h VGA)
+global,DS:E55A,broke_pic,far ptr,BROKE.LZ / BROKEGA.LZ (1D06h VGA)
+global,DS:CE98,chase_pic,far ptr,CHASE.LZ (37Ah)
+global,DS:E5BC,compass_pic,far ptr,COMPASS.LZ (113h)
+global,DS:E7D8,diffleva_pic,far ptr,DIFFLEVA.LZ (inside the DS:E770 block)
+global,DS:E7E4,difflevb_pic,far ptr,DIFFLEVB.LZ (DS:E770 block + 3520h)
+global,DS:E7EA,difflevc_pic,far ptr,DIFFLEVC.LZ (DS:E770 block + 6978h)
+global,DS:E866,select_pic,far ptr,SELECT.LZ (DS:E770 block + B34Ch)
+global,DS:EA74,ssbj_pic,far ptr,SSBJ.LZ (DS:E770 block + EF74h)
+global,DS:CEA4,car_pob,far ptr,<car>.POB (8E8h)
+global,DS:E7DC,dos_block,far ptr,300h paragraphs from INT 21h/48h (segment also in DS:16B8)

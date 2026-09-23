@@ -474,6 +474,8 @@ class AdlibDriver:
                 return
         self.b0[v] &= 0x1F
         self.write(0xB0 + v, self.b0[v])
+        self.nword[v] = 0                           # the driver also clears noteword and note
+        self.note[v] = 0                            # (port/spec/sound.md, 1ace:08c1)
 
     def program(self, v, p):                       # 1ace:05a6 + 09a1
         if v > 13:
