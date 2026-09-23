@@ -1,0 +1,20 @@
+# Original game and third-party tools (not redistributable / downloaded)
+/Game/
+/DOSBOX/
+/_tools/
+
+# Generated output (tools/*.py and the Ghidra scripts regenerate it)
+/work/
+/port/decomp/
+
+# Build output and copied binaries
+build*/
+/*.exe
+/*.dll
+/release/
+__pycache__/
+*.log
+
+# Game data dumped from the executables (not ours to publish; the port reads the original at runtime)
+/port/spec/tables/
+/_ghidra/

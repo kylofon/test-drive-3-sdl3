@@ -1,0 +1,93 @@
+# Test Drive III: The Passion — SDL3 port plan
+
+Same approach as TestDrive1987 / TestDrive2: first a **faithful C port** here
+(reverse-engineer → document → port function by function against the original data,
+read at runtime), then a separate **TD3 Enhanced** repo built on it.
+
+TD3 (1990, Accolade in-house, Tom Loughry) has a new engine: filled-polygon 3D
+world, free driving over a map with side roads, scenery disks. Little code should
+carry over from TD1/TD2 apart from the tooling and the port skeleton.
+
+## What we have (recon, 2026-09-23)
+
+| File | Size | Notes |
+|---|---|---|
+| `TDIII.EXE` | 125 251 | EXEPACK; `tools/unexepack.py` → 166 544-byte MZ, entry 1940:0018, 1391 relocs. "MS Run-Time Library (c) 1988" → MSC 5.1 |
+| `SETUP.EXE` | 5 245 | writes `TD3.CFG` (graphics, sound, joystick) |
+| `TD3.CFG` | 6 | byte 2 = sound device (1 Tandy, 2 CMS, 3 MT-32, 4 AdLib/SB); byte 4 = MT-32 flag? |
+| `DATAA.DAT`, `DATAB.DAT` | 125 K / 249 K | named `.LZ` images inside (TITLE1, SELECT, KEYS, COPSEQ, CREDIT*, TOPSCOR*, DIFFLEV*, WATER/WATEREGA, BROKE/BROKEGA …) |
+| `DATAC.DAT` | 1.8 K | starts with 6-bit palette-looking bytes |
+| `INSTR.DAT` | 1.9 K | AdLib instrument bank ("Ad-lib Sound Board") |
+| `SCENE01/02.DAT` | 169 K / 209 K | compressed world (Pacific – Yosemite, …) |
+| `SCENE0x.LST` | 1 638 | scene name + parameters |
+| `SCENE0x.HI` | 450 | high-score table |
+| `C*.DAT/.LST/.POB` | ×5 cars | CERV III, NSX, Diablo, Mythos, Stealth: graphics / specs+name / polygon object? |
+| `PLAYDISK.DAT` | 179 | disk manifest: car + scene slots (`?????` = empty, for add-on disks) |
+
+Video modes in the exe: **VGA/MCGA 320×200×256**, EGA 16, Tandy 16.
+Sound: Tandy 3-voice, Game Blaster (CMS), MT-32/LAPC-1, AdLib/SB.
+
+## Phases
+
+### 0. Repository — done
+- `C:\Coding\TestDrive3`, git `master`, no remote (GitHub later, on request).
+- `Game/` original data (git-ignored; the port reads it at runtime).
+- `_tools` → junction to `TestDrive1987/_tools` (Ghidra 12.1.3, JDK 21).
+- Tools carried over: `unexepack.py`, `x86dis.py`, Ghidra scripts
+  (`ApplySymbols`, `DecompileAll`, `SetDS`, `postprocess.py`).
+
+### 1. Executable map
+- Unpack to `work/`, build the segment/function list (`tools/td3index.py`,
+  adapted from `td2index.py`): far-call targets, segment bases, DGROUP, entry.
+- Identify and label the MSC 5.1 RTL so it drops out of scope early.
+- Ghidra project in `_ghidra/`, `SetDS` + `DecompileAll` → `port/decomp/` (ignored).
+- Quick check against TD2 (`td1match`-style) for shared asm helpers
+  (keyboard/timer/joystick); expected low overlap.
+- Output: `port/RE_GUIDE.md` (addresses as SSSS:OOOO, Ghidra = +1000),
+  `port/symbols.csv` seeded with RTL + obvious names.
+
+### 2. File formats → `FORMATS.md` + `tools/td3*.py`
+Each format gets a decoder that dumps to `work/` plus an image/contact sheet so
+it can be checked visually:
+1. `DATAx.DAT` archive directory + `.LZ` decompressor → all screens as PNG.
+2. Palettes (`DATAC.DAT`, headers of the car files).
+3. Car files: `.LST` (name, specs, gear ratios, torque curve), `.POB`, `.DAT`
+   (dashboard / car-select art / 3D model).
+4. `SCENE*.DAT`: world map, road network, polygon objects, landmarks → top-down
+   map render (this became the map viewer in TD2 — worth doing early here too).
+5. `.HI`, `TD3.CFG`, `PLAYDISK.DAT`, `INSTR.DAT`, music data.
+
+### 3. Specs → `port/spec/<subsystem>.md`
+Split as in TD2, adjusted for the new engine:
+- `platform` — startup, config, memory, timer/IRQ, keyboard, joystick
+- `video` — VGA mode 13h path, page flipping, palette fades, blitters
+- `render3d` — camera, transform/projection, clipping, polygon fill, sort order, horizon/sky, dashboard overlay
+- `world` — scene loading, road network, object placement, side roads, map
+- `simulation` — car physics, gears, damage, radar detector, cops, traffic AI
+- `game_flow` — title, car/scene/difficulty select, race, checkpoints, replay/crash sequences, high scores
+- `sound` — AdLib music + effects (driver + INSTR.DAT)
+
+### 4. `td3port/` skeleton
+CMake + SDL3 copied from `td2port` (host, `mem.h` memory model, timer,
+input, snapshot/`TD3_KEYS` automation, generated `symbols.h`). Loads the original
+`Game/` files at runtime; `PORTING.md` with the same rules (`/* PORT: */` marks).
+
+### 5. Port, subsystem by subsystem
+Order: platform/video → screens (title, menus: a visible milestone) → scene
+loading + 3D renderer (static camera) → driving/physics → traffic/cops →
+full game flow → sound. Each step verified against DOSBox captures of the
+original (`DOSBOX/`, ignored) and headless snapshots (`SDL_VIDEO_DRIVER=dummy`,
+`SDL_AUDIO_DRIVER=dummy`).
+
+### 6. Release, then TD3 Enhanced
+Release the faithful port like TD2 (v0.1.0 zip). Then a new
+`TestDrive3Enhanced` repo. Because the world is already polygons, Enhanced can
+likely render at native resolution / widescreen / 60 fps with longer draw
+distance from the same geometry. That goes further than the TD1/TD2 overlays.
+
+## Decisions needed
+
+1. **Graphics target**: VGA 256-colour only; EGA and Tandy parked (as TD2 Tandy)? *(recommended)*
+2. **Sound**: AdLib/SB through a bundled OPL2 emulator (e.g. Nuked-OPL3, LGPL,
+   or ymfm, BSD); MT-32, Tandy and CMS dropped? *(recommended)*
+3. **Copy protection**: if TD3 has a manual/code check, bypass it with a `/* PORT: */` note. *(to confirm once found)*
