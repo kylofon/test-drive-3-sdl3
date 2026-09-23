@@ -1,0 +1,503 @@
+address,module,name,listed_by
+0000:0000,game_flow,main,game_flow
+0000:07e4,game_flow,exit_to_dos,game_flow
+0000:081c,game_flow,harderr_handler,game_flow
+0000:0874,game_flow,fatal_exit,game_flow
+0000:092a,game_flow,config_load,game_flow
+0000:0ce6,game_flow,cfg_show_video_choice,game_flow
+0000:0d0e,game_flow,cfg_show_sound_choice,game_flow
+0000:0d36,game_flow,cfg_show_yes_no,game_flow
+0000:0d62,game_flow,pal_load,game_flow
+0000:0df6,game_flow,pal_load_32,game_flow
+0000:0e74,game_flow,file_load_near,game_flow
+0000:0ee0,game_flow,file_load_far,game_flow
+0000:0f58,game_flow,random,game_flow
+0000:0f80,game_flow,key_poll,game_flow
+0000:11d2,game_flow,mem_alloc_all,game_flow
+0000:1442,game_flow,mem_free_all,game_flow
+0000:1518,game_flow,nop_1518,game_flow
+0000:151a,game_flow,nop_151a,game_flow
+0000:151c,game_flow,archive_open,game_flow
+0000:16d0,game_flow,name_hash_h1,game_flow
+0000:171a,game_flow,name_hash_h2,game_flow
+0000:1760,game_flow,name_hash,game_flow
+0000:179c,game_flow,message_box,game_flow
+0000:1e44,game_flow,joystick_keys,game_flow
+0000:1ea4,game_flow,joystick_direction,game_flow
+01f4:000e,game_flow,player_rec_load,game_flow
+01f4:003e,game_flow,player_rec_save,game_flow
+01f4:0070,game_flow,title_sequence,game_flow
+01f4:0a96,game_flow,top_score_enter,game_flow
+01f4:0f4e,game_flow,top_scores_screen,game_flow
+01f4:12d4,game_flow,print_score,game_flow
+01f4:144c,game_flow,main_menu,game_flow
+01f4:1864,game_flow,gfx_frame,game_flow hud
+01f4:18b0,game_flow,menu_box_draw,game_flow
+01f4:19f4,game_flow,credits_text,game_flow
+01f4:1a82,game_flow,print_records,game_flow
+01f4:1ad6,game_flow,print_text,game_flow
+01f4:1b0a,game_flow,print_record,game_flow
+01f4:1b58,game_flow,print_chars,game_flow
+01f4:1b8e,game_flow,wait_key,game_flow
+01f4:1be2,game_flow,screen_present,game_flow
+01f4:1c00,game_flow,ega_pal_black,game_flow
+01f4:1c34,game_flow,ega_pal_restore,game_flow
+01f4:1c48,game_flow,pal_apply,game_flow
+01f4:1c56,game_flow,pal_black,game_flow
+01f4:1c64,game_flow,pal_fade_in,game_flow
+01f4:1c72,game_flow,pal_fade_out,game_flow
+01f4:1c80,game_flow,pal_fade_out_low,game_flow
+01f4:1c8e,game_flow,page_keep_high,game_flow
+01f4:1c9c,game_flow,ega_pal_init,game_flow
+01f4:1cf0,sound,snd_init,sound
+01f4:1d22,sound,music_for_state,sound
+01f4:1e48,sound,music_play_theme,sound
+01f4:1e9a,sound,snd_shutdown,sound
+01f4:1ec2,game_flow,copy_protection_check,game_flow
+01f4:262a,game_flow,protection_picture_draw,game_flow
+01f4:26fe,game_flow,playdisk_prompt,game_flow
+01f4:2736,game_flow,playdisk_write,
+01f4:2812,game_flow,playdisk_verify,
+01f4:28ae,game_flow,playdisk_load,
+01f4:29f0,game_flow,car_lst_load,
+01f4:2bc6,game_flow,scene_lst_load,
+01f4:2e66,game_flow,hi_write,
+01f4:2f0e,game_flow,playdisk_screen,
+01f4:310c,game_flow,car_select,
+01f4:3332,game_flow,car_next,
+01f4:3396,game_flow,car_prev,
+01f4:33f8,game_flow,car_select_draw,
+01f4:3636,game_flow,scene_select,
+01f4:36de,game_flow,scene_next,
+01f4:373e,game_flow,scene_prev,
+01f4:379c,game_flow,scene_select_draw,
+01f4:3b2e,game_flow,options_screen,
+01f4:3f8e,game_flow,leg_banner_draw,
+01f4:40ce,game_flow,race_status_screen,game_flow
+01f4:470e,game_flow,results_frame_draw,game_flow
+01f4:4954,game_flow,leg_results,
+01f4:4d7e,game_flow,draw_leg_record,
+01f4:51e2,game_flow,leg_record_merge,
+01f4:53c4,game_flow,shared_scene_load,
+01f4:55f0,game_flow,opponent_results,game_flow
+01f4:59ac,game_flow,pic_draw,game_flow hud
+0792:000c,game_flow,race_run,game_flow
+0792:0414,hud,race_input,game_flow hud
+0792:04ca,hud,chase_view_exit,game_flow hud
+0792:059a,hud,chase_view_enter,game_flow hud
+0792:0602,hud,replay_panel_draw,game_flow hud
+0792:083c,game_flow,car_leg_reset,game_flow
+0792:0922,hud,cockpit_setup,game_flow hud
+0792:0cec,hud,view_first_frame,game_flow hud
+0792:0d2e,game_flow,stage_load_objects,game_flow
+0792:0fce,game_flow,leg_map_load,game_flow
+0792:10a6,hud,hud_reset_topbar,game_flow hud
+0792:10c8,hud,shifter_update,hud
+0792:1156,hud,shift_lever_draw,hud
+0792:1310,hud,wheel_update,hud
+0792:1488,hud,wheel_rim_blit,hud
+0792:155e,hud,steer_marker_draw,hud
+0792:15d4,hud,tach_draw,hud
+0792:16c4,hud,odometer_draw,hud
+0792:18da,hud,speedo_draw,hud
+0792:1952,hud,odometer_update,hud
+0792:19ca,hud,water_overlay_start,game_flow hud
+0792:1a72,hud,water_roll_step,game_flow hud
+0792:1c00,hud,broken_glass_overlay,game_flow hud
+0792:1c66,hud,cockpit_pictures_draw,game_flow hud
+0792:1dfe,hud,load_opponent_pob_nonvga,hud
+0977:0008,simulation,car_physics,simulation
+0ab4:000a,platform,nop_far,platform
+0ab4:000f,platform,lzw_alloc,platform
+0ab4:0034,platform,lzw_free,platform
+0ab4:0047,platform,lzw_decode,platform
+0ab4:006a,platform,lzw_decode_body,platform
+0ab4:0140,platform,lzw_fill_input,platform
+0ab4:015c,platform,lzw_get_code,platform
+0ab4:01ca,platform,lzw_reset_width,platform
+0ab4:01dd,platform,lzw_out,platform
+0ab4:01e9,platform,lzw_idx3,platform
+0ab4:01f0,platform,lzw_add_entry,platform
+0ab4:120f,simulation,replay_clear,simulation
+0ab4:1220,simulation,replay_update,simulation
+0ab4:1460,simulation,debris_sprites,simulation
+0ab4:14b9,simulation,replay_play_frame,simulation
+0ab4:1544,simulation,replay_rec_objects,simulation
+0ab4:1604,simulation,replay_play_objects,simulation
+0c1c:0662,platform,enable_interrupts,platform
+0c1c:0664,platform,joy_read_raw,platform
+0c1c:06d8,platform,joy_read,platform
+0c1c:0702,platform,pit_random,platform
+0c1c:071c,platform,far_normalize,platform
+0c1c:0733,platform,text_set_colours,hud platform
+0c1c:074c,platform,text_goto_cell,platform
+0c1c:076b,platform,text_goto,platform
+0c1c:0784,platform,text_draw_char,platform
+0c1c:084e,platform,dos_seek,platform
+0c1c:0868,platform,dos_open_read,platform
+0c1c:087a,platform,dos_file_size,platform
+0c1c:08a0,platform,dos_read,platform
+0c1c:08b9,platform,dos_close,platform
+0c1c:08c5,platform,dissolve_page1_to_0,platform
+0c1c:0aa5,platform,dissolve_poll,platform
+0c1c:0ae0,platform,dac_upload_256,platform
+0c1c:0b1d,platform,dac_upload_128,platform
+0c1c:0b5b,platform,pal_fade_out,platform
+0c1c:0b89,platform,page_clear_low_colours,platform
+0c1c:0bb7,platform,pal_fade_out_low,platform
+0c1c:0be5,platform,pal_fade_in,platform
+0c1c:0c16,platform,pal_black,platform
+0c1c:0c2a,platform,pal_set,platform
+0c1c:0c45,platform,rle_draw_page,platform
+0c1c:0e2d,platform,kbd_install,platform
+0c1c:0e7d,platform,kbd_restore,platform
+0c1c:0e98,platform,kbd_isr,platform
+0c1c:109f,platform,timer_install,platform
+0c1c:10cf,platform,timer_restore,platform
+0c1c:10e8,platform,timer_isr,platform sound
+0c1c:1110,sound,sfx_play,sound
+0c1c:111d,sound,sfx_play_ax,sound
+0c1c:11f7,platform,rect_save,platform
+0c1c:1303,platform,rect_restore,platform
+0c1c:13d8,platform,view_present,platform
+0c1c:15c7,platform,page_mirror_left_half,platform
+0c1c:16f8,platform,ega_shift_copy,platform
+0c1c:170a,platform,ega_restore_rows,platform
+0c1c:1759,platform,rle_draw_viewbuf,hud platform
+0c1c:17cd,platform,mirror_present,platform
+0c1c:1930,platform,view_present_ega,platform
+0c1c:19e4,platform,ega_copy_planes,platform
+0c1c:1b6f,platform,ega_gc_setup,platform
+0c1c:1b8a,platform,rle_draw_dither,platform
+0c1c:1e87,platform,dither_put,platform
+0c1c:1f32,platform,print_text_bios,platform
+0e12:0080,simulation,controls_poll_far,simulation
+0e12:0084,simulation,key_dispatch,hud simulation
+0e12:00d5,simulation,key_none,simulation
+0e12:00d9,simulation,key_mouse_toggle,simulation
+0e12:012d,simulation,key_mirror,simulation
+0e12:0133,simulation,key_wheel_centring,hud simulation
+0e12:0149,simulation,key_version,simulation
+0e12:0156,simulation,gear_up,simulation
+0e12:0188,simulation,gear_up_gate,simulation
+0e12:01c5,simulation,gear_lever_target,simulation
+0e12:01d8,simulation,gear_down,simulation
+0e12:0229,simulation,gear_down_gate,simulation
+0e12:0269,simulation,key_knob_toggle,hud simulation
+0e12:026f,simulation,key_chase_view,simulation
+0e12:0302,simulation,key_wipers,simulation
+0e12:030f,simulation,key_headlights,simulation
+0e12:031c,simulation,key_window_size,hud simulation
+0e12:03ab,simulation,key_detail,simulation
+0e12:03d4,render3d,detail_apply,render3d simulation
+0e12:044e,simulation,life_lost,simulation
+0e12:04f1,simulation,panel_erase,hud simulation
+0e12:0534,simulation,key_instant_replay,simulation
+0e12:056a,simulation,key_return_to_road,simulation
+0e12:059c,simulation,key_replay_pause,hud simulation
+0e12:05cd,simulation,key_steer_sensitivity,simulation
+0e12:05e3,simulation,key_debug_rain,simulation
+0e12:0606,simulation,key_debug_snow,simulation
+0e12:0630,simulation,key_radio,simulation sound
+0e12:0667,simulation,key_debug_night,simulation
+0e12:06b6,simulation,key_debug_flip,simulation
+0e12:0751,simulation,controls_poll,simulation
+0e12:08d9,simulation,mouse_controls,simulation
+0e12:095a,simulation,auto_shift,simulation
+0e12:09d6,simulation,steer_throttle,simulation
+0e12:0b02,simulation,shift_keys,simulation
+0e12:0b1d,hud,race_clock_hud,hud simulation
+0e12:0b85,hud,clock_draw,hud simulation
+0e12:0cbe,hud,compass_draw,hud simulation
+0e12:0db4,hud,radar_detector,hud simulation
+0e12:0e74,simulation,overrev_damage,simulation
+0e12:0ec5,simulation,landing_damage,simulation
+0e12:0edb,simulation,random_damage,render3d simulation
+0e12:0f31,simulation,crash_start,render3d simulation
+0e12:0fa1,render3d,screen_shake_step,render3d simulation
+0e12:0fd6,simulation,bounce_back,render3d simulation
+0e12:22fe,render3d,atan2_xz,render3d simulation
+0e12:234b,render3d,polar,hud render3d simulation
+0e12:23b1,simulation,grip_yaw_limit,simulation
+0e12:23df,sound,engine_sound,sound
+0e12:2465,simulation,life_reset,render3d simulation
+0e12:2537,render3d,frame_buffers_init,render3d
+0e12:255e,render3d,leg_state_reset,render3d
+0e12:25f4,render3d,view_row_tables_init,render3d
+0e12:261c,render3d,build_colour_remap,render3d
+0e12:276e,render3d,sprite_pixels_remap,render3d
+0e12:2789,render3d,sprites_prescale,render3d
+0e12:2810,render3d,sprite_prescale_one,render3d
+0e12:289a,render3d,sprite_scale_setup,render3d
+0e12:28eb,render3d,sprite_draw,render3d
+0e12:2999,render3d,sprite_blit_mirror,render3d
+0e12:2a9e,render3d,sprite_rows_mirror,render3d
+0e12:2b74,render3d,sprite_blit_main,render3d
+0e12:2c7c,render3d,sprite_rows_main,render3d
+0e12:2d54,render3d,sprite_scale_rows,render3d
+0e12:2dc6,render3d,sprite_scale_rows_up,render3d
+0e12:2e49,render3d,sprite_pick_scale,render3d
+0e12:2eb6,render3d,sprite_scale_patterns,render3d
+0e12:2f84,render3d,sprite_scale_row,render3d
+0e12:3004,render3d,sprite_scale_row_up,render3d
+0e12:3085,render3d,sprite_list_build,render3d
+0e12:312e,render3d,sprite_sort,render3d
+0e12:3147,render3d,sprite_sort_bubble,render3d
+0e12:316c,render3d,sprite_project,render3d
+0e12:323e,render3d,draw_faces_and_sprites,render3d
+0e12:3352,render3d,sprite_animate,render3d
+0e12:33f7,simulation,sprite_collisions,render3d simulation
+0e12:34c3,render3d,scene_prepare,render3d simulation
+0e12:34f1,simulation,near_face_hits,render3d simulation
+0e12:35f9,render3d,face_order_reset,render3d
+0e12:361c,render3d,faces_sort_keys,render3d
+0e12:373c,render3d,sky_ground_draw,render3d
+0e12:394c,render3d,vertices_project,render3d
+0e12:39fd,render3d,vertex_project_y,render3d
+0e12:3a7c,render3d,draw_face_dispatch,render3d simulation
+0e12:3a9e,render3d,draw_face_polygon,render3d
+0e12:3ebf,render3d,fill_around_camera,render3d
+0e12:3f6c,render3d,fill_below_edge,render3d
+0e12:3fe5,render3d,fill_above_edge,render3d
+0e12:409c,render3d,view_setup,render3d
+0e12:41d4,render3d,fill_spans,render3d
+0e12:43db,render3d,blob_spans,render3d
+0e12:44c2,render3d,line_thin_spans,render3d
+0e12:4590,render3d,plate_fold_down,render3d simulation
+0e12:4631,simulation,knockover_hit,render3d simulation
+0e12:46c0,render3d,cockpit_overlays,render3d
+0e12:46dc,render3d,precipitation_draw,render3d
+0e12:477c,render3d,rain_streaks,render3d
+0e12:47aa,render3d,snow_flakes,render3d
+0e12:47d1,render3d,windscreen_spawn,render3d
+0e12:47fc,render3d,windscreen_splat,render3d
+0e12:487e,render3d,windscreen_drops_draw,render3d
+0e12:48f5,render3d,drop_shape_fresh,render3d
+0e12:495c,render3d,drop_shape_old,render3d
+0e12:4a5c,render3d,wipers_update_draw,render3d
+0e12:4b37,render3d,headlight_beam_draw,render3d
+0e12:4bf3,render3d,dashboard_edge_draw,render3d
+0e12:4c51,simulation,replay_start,render3d simulation
+0e12:4cb0,render3d,overlay_quads4_draw,render3d
+0e12:4d60,simulation,objects_update,render3d simulation
+0e12:4d6d,render3d,obj_runtime_colours_all,render3d
+0e12:4db6,render3d,obj_face_runtime_colours,render3d
+0e12:4fc7,render3d,parked_vehicles_emit,render3d simulation
+0e12:509b,simulation,moving_objects_update,render3d simulation
+0e12:52a3,render3d,obj_emit_vehicle_moving,render3d
+0e12:539d,render3d,obj_emit_vehicle,render3d
+0e12:5466,simulation,vehicle_follow_lane,simulation
+0e12:5aa4,simulation,lane_list_for_cell,simulation
+0e12:5ad4,simulation,vehicle_collisions,render3d simulation
+0e12:5cf2,simulation,vehicle_collision_boxes,render3d simulation
+0e12:5df9,render3d,lighthouse_rotate,render3d
+0e12:5e70,simulation,crossing_gate_update,render3d simulation
+0e12:5f57,render3d,crossing_gate_arm_place,render3d
+0e12:5ffe,simulation,police_update,render3d simulation
+0e12:61d2,simulation,police_pursuit_clear,render3d simulation
+0e12:61fd,simulation,opponent_times_finalize,render3d simulation
+0e12:624a,simulation,opponent_time_estimate,render3d simulation
+0e12:6316,render3d,plane_height_at_camera,render3d simulation
+0e12:6421,render3d,ground_slope_update,render3d simulation
+0e12:6604,render3d,rotate_by_heading,render3d simulation
+0e12:6666,render3d,slope_to_roll_code,render3d simulation
+0e12:6686,simulation,pitch_shear,simulation
+0e12:66ad,render3d,point_draw,render3d
+0e12:67af,render3d,line_draw,render3d
+0e12:682e,render3d,tri_fill,render3d
+0e12:685c,render3d,tri_fill_row,render3d
+0e12:68b0,render3d,tri_fill_flat_bottom,render3d
+0e12:6909,render3d,tri_fill_flat_top,render3d
+0e12:69da,render3d,quad_fill,render3d
+0e12:6e92,simulation,camera_pos_update,simulation
+0e12:6f9c,simulation,polar_small,render3d simulation
+0e12:70b8,render3d,obj_ranges_clear,render3d simulation
+0e12:70cd,render3d,world_build_visible,render3d
+0e12:72f8,render3d,model_place,render3d
+0e12:7487,render3d,model_emit_faces,render3d
+0e12:75c1,render3d,model_emit_vertices,render3d
+0e12:7653,render3d,vertex_rotate,render3d
+0e12:76ec,render3d,frame_update,render3d
+0e12:77d5,render3d,frame_draw,render3d
+0e12:78a7,render3d,sprite_sort_quick,render3d
+0e12:78cc,render3d,sprite_qsort,render3d
+0e12:794b,render3d,sprite_rec_swap,render3d
+0e12:797b,render3d,sprite_bubble_sort,render3d
+0e12:7a18,render3d,faces_quicksort_all,render3d
+0e12:7a35,render3d,faces_quicksort,render3d
+0e12:7b06,render3d,faces_bubble_sort,render3d
+0e12:7b9b,render3d,mirror_sky_ground,render3d
+0e12:7c21,render3d,mirror_frame_draw,render3d
+0e12:7cd9,render3d,mirror_fill_above_edge,render3d
+0e12:7d94,render3d,mirror_fill_below_edge,render3d
+0e12:7e11,render3d,fill_spans_mirror,render3d
+0e12:8016,render3d,blob_spans_mirror,render3d
+0e12:80fb,render3d,line_thin_spans_mirror,render3d
+0e12:81c7,render3d,point_draw_mirror,render3d
+0e12:82d6,render3d,line_draw_mirror,render3d
+0e12:836e,render3d,tri_fill_mirror,render3d
+0e12:839c,render3d,tri_fill_mirror_839c,render3d
+0e12:8413,render3d,tri_fill_mirror_8413,render3d
+0e12:8490,render3d,tri_fill_mirror_8490,render3d
+0e12:85a9,render3d,quad_fill_mirror,render3d
+0e12:8b5f,render3d,vertex_project_y_mirror,render3d
+16cf:0006,platform,gfx_detect,platform
+16d9:0002,platform,gfx_line_to,hud platform
+16e5:0007,platform,gfx_get_draw_seg,platform
+16e5:000b,platform,gfx_get_mode,platform
+16e6:000e,platform,mouse_init,platform
+16ec:0004,platform,mouse_set_range,platform
+16ef:0009,platform,mouse_set_pos,hud platform
+16f1:000d,platform,mouse_get,platform
+16f5:0008,platform,mouse_show,platform
+16fb:0008,platform,gfx_move_to,hud platform
+16fc:000b,platform,text_exit_clear,platform
+16ff:000b,platform,bios_wait_ticks,hud platform
+1703:0001,platform,gfx_set_colour,hud platform
+170e:0002,platform,gfx_set_copy_page,hud platform
+1714:000e,platform,gfx_set_draw_page,hud platform
+171b:000a,platform,gfx_set_visible_page,platform
+172d:000e,platform,gfx_alloc_page,platform
+1736:0004,platform,gfx_free_page,platform
+173c:0005,platform,gfx_put_pixel,hud platform
+173c:01ca,platform,gfx_set_pal_reg,platform
+173c:02a8,platform,,
+1776:0008,platform,gfx_set_display_offset,platform
+1785:000b,platform,gfx_fill_rect,hud platform
+17be:0009,platform,gfx_copy_rect_to_copy_page,platform
+17eb:0006,platform,gfx_copy_rect_from_copy_page,platform
+1818:0003,platform,gfx_copy_rect,hud platform
+185f:000b,platform,gfx_draw_bitmap,hud platform
+18b3:0004,platform,gfx_read_bitmap,hud platform
+18f3:0002,platform,gfx_set_ega_palette,platform
+1905:000b,platform,gfx_set_mode,platform
+192e:0005,platform,gfx_fill_rect_clipped,hud platform
+1937:0003,platform,gfx_clear_page,platform
+1940:0018,platform,_astart,
+1940:00de,platform,_cinit,
+1940:01a2,platform,exit,
+1940:01b9,platform,_exit,
+1940:0200,platform,_ctermsub,
+1940:022d,platform,_initterm,
+1940:0240,platform,fclose,
+1940:0308,platform,fopen,platform
+1940:0334,platform,fread,platform
+1940:0526,platform,fwrite,platform
+1940:066c,platform,_ffree,platform
+1940:0681,platform,_fmalloc,platform
+1940:06c0,platform,,
+1940:072e,platform,,
+1940:0746,platform,strcpy,
+1940:0778,platform,strcmp,
+1940:07a4,platform,strlen,
+1940:07c4,platform,getch,platform
+1940:07dc,platform,getcwd,platform
+1940:07f2,platform,_getdcwd,platform
+1940:08a6,platform,_harderr,platform
+1940:08f3,platform,_hardresume,platform
+1940:08fc,platform,_aFldiv,platform
+1940:0998,platform,_aFlmul,
+1940:09cc,platform,_aFNaldiv,platform
+1940:09f0,platform,_aFNauldiv,platform
+1940:0a14,platform,_aFuldiv,platform
+1940:0a76,platform,_aFulrem,platform
+1940:0ae2,platform,_FF_MSGBANNER,
+1940:0b0c,platform,_nullcheck,
+1940:0b32,platform,_NMSG_TEXT,
+1940:0b5d,platform,_NMSG_WRITE,
+1940:0b88,platform,_filbuf,platform
+1940:0c4a,platform,_flsbuf,platform
+1940:0da8,platform,_freebuf,
+1940:0dd8,platform,_openfile,
+1940:0ed2,platform,fflush,
+1940:0f42,platform,_getstream,
+1940:0f7c,platform,close,
+1940:0f9c,platform,read,
+1940:107a,platform,write,
+1940:1122,platform,,
+1940:11a4,platform,free,
+1940:11b6,platform,malloc,
+1940:11ff,platform,,
+1940:12e2,platform,,
+1940:131c,platform,,
+1940:133e,platform,,
+1940:1360,platform,_brkctl,
+1940:13ce,platform,,
+1940:1424,platform,strcat,
+1940:1464,platform,itoa,
+1940:1480,platform,bdos,platform
+1940:1492,platform,,
+1940:14dc,platform,memcpy,platform
+1940:1508,platform,remove,platform
+1940:1536,platform,,
+1940:153c,platform,_dosmaperr,
+1940:156a,platform,_getbuf,platform
+1940:15d8,platform,lseek,
+1940:1652,platform,open,
+1940:17e5,platform,,
+1940:17f6,platform,stackavail,
+1940:180a,platform,memset,
+1940:18b2,platform,flushall,
+1ace:0006,sound,music_notes_off,sound
+1ace:004b,sound,music_play,sound
+1ace:00b4,sound,music_stop,sound
+1ace:00ec,sound,voice_release,sound
+1ace:0151,sound,music_claim_voices,sound
+1ace:01cc,sound,music_init,sound
+1ace:0272,sound,snd_identity_chmap,sound
+1ace:027d,sound,snd_reset_tables,sound
+1ace:02a5,sound,snd_select_routines,sound
+1ace:02fa,sound,instr_load,sound
+1ace:03d5,sound,snd_nop,sound
+1ace:03d6,sound,snd_tick,sound
+1ace:048d,sound,music_fade,sound
+1ace:04de,sound,mus_ev_note_off,sound
+1ace:04e8,sound,mus_ev_note_on,sound
+1ace:0536,sound,mus_ev_loop,sound
+1ace:0591,sound,mus_ev_stop_point,sound
+1ace:05a6,sound,mus_ev_program,sound
+1ace:05b4,sound,mus_ev_loop_exit,sound
+1ace:05bf,sound,mus_ev_hook,sound
+1ace:05ca,sound,mus_ev_end,sound
+1ace:05df,sound,voice_alloc_check,sound
+1ace:062c,sound,mpu_reset,sound
+1ace:0637,sound,mpu_program,sound
+1ace:064f,sound,mpu_note_on,sound
+1ace:06a3,sound,mpu_set_freq,sound
+1ace:0703,sound,mpu_note_off,sound
+1ace:073d,sound,mpu_command,sound
+1ace:076d,sound,mpu_data,sound
+1ace:0787,sound,mpu_all_off,sound
+1ace:0792,sound,mpu_load_bank,sound
+1ace:07ad,sound,adlib_set_tl,sound
+1ace:07df,sound,adlib_note_on,sound
+1ace:086d,sound,note_fold,sound
+1ace:0884,sound,adlib_set_freq,sound
+1ace:08c1,sound,adlib_note_off,sound
+1ace:092a,sound,adlib_load_instrument,sound
+1ace:09a1,sound,adlib_program,sound
+1ace:09c2,sound,adlib_all_off,sound
+1ace:09ed,sound,adlib_load_bank,sound
+1ace:0a18,sound,cms_detect,sound
+1ace:0a59,sound,cms_note_on,sound
+1ace:0abf,sound,cms_set_freq,sound
+1ace:0b16,sound,cms_note_off,sound
+1ace:0b5f,sound,cms_reset,sound
+1ace:0b92,sound,spk_note_on,sound
+1ace:0bc9,sound,spk_set_freq,sound
+1ace:0bde,sound,spk_note_off,sound
+1ace:0c0e,sound,spk_all_off,sound
+1ace:0c15,sound,tandy_note_on,sound
+1ace:0c66,sound,tandy_set_freq,sound
+1ace:0ca0,sound,tandy_note_off,sound
+1ace:0cd1,sound,tandy_all_off,sound
+1ace:0ce9,sound,voice_modulate,sound
+1ace:0d1c,sound,sfx_modulate,sound
+1ace:0d86,sound,freq_lookup,sound
+1ace:0db9,sound,sfx_start,sound
+1ace:0e55,sound,sfx_step,sound
+1ace:0ffe,sound,sfx_init,sound
+1ace:1072,sound,sfx_stop_all,sound
+1bd7:000c,sound,dos_free,sound
+1bd8:000e,sound,adlib_write,sound
+1bd8:0028,sound,adlib_detect_reset,sound

@@ -17,8 +17,7 @@
 #include "host.h"
 #include "mem.h"
 #include "platform/vga.h"
-
-int game_main(void);   /* game code: port of main() at 0000:0000 */
+#include "game/game.h"
 
 int main(int argc, char **argv)
 {
@@ -52,6 +51,7 @@ int main(int argc, char **argv)
 
     if (!host_init(dir, scale)) return 1;
     vga_init();      /* mode 13h model: frame source, DAC, CRTC start */
+    modules_init();  /* host handlers, code-pointer tables (modules.c) */
     int rc = game_main();
     host_shutdown();
     return rc;

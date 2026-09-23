@@ -1,0 +1,392 @@
+== module platform
+0ab4:000a nop_far  (far=True, called by game_flow)
+    platform: void(void) | empty; called by get_key
+0ab4:000f lzw_alloc  (far=True, called by game_flow)
+    platform: int(void) | DOS 48h 300h paragraphs -> DS:16B8, DS:E7DC far ptr; also the mirror buffer
+0ab4:0034 lzw_free  (far=True, called by game_flow)
+    platform: void(void) | DOS 49h DS:16B8
+0ab4:0047 lzw_decode  (far=False, called by game_flow, hud)
+    platform: void(void far *src void far *dst) | LZW 9-12 bits, 100h clear, 101h end; sets DS:BD3F = 1
+0c1c:0662 enable_interrupts  (far=True, called by game_flow)
+    platform: void(void) | sti; from INT 24h handler 0000:081c
+0c1c:0664 joy_read_raw  (far=True, called by game_flow)
+    platform: u16(void) | port 201h axes -> DS:00C2/00CC unless a tick occurred; returns (~port)&30h
+0c1c:06d8 joy_read  (far=True, called by game_flow)
+    platform: u16(void) | joy_read_raw + clamp to 4*centre
+0c1c:0733 text_set_colours  (far=True, called by game_flow, hud, simulation)
+    hud: far void(int fg int bg) | DS:90E3 = fg<<8; DS:90E1 = bg<<8 (order Likely)
+    platform: void(int fg int bg) | DS:90E3 = fg<<8; DS:90E1 = bg<<8
+0c1c:074c text_goto_cell  (far=True, called by game_flow)
+    platform: void(int row int col) | DS:90E7 = row*8, DS:90E5 = col*8
+0c1c:076b text_goto  (far=True, called by game_flow)
+    platform: void(int y int col) | DS:90E7 = y, DS:90E5 = col*8
+0c1c:0784 text_draw_char  (far=True, called by game_flow)
+    platform: void(char *c) | proportional 8x8 glyph from CS:0262 + 8c; opaque bg unless DS:90E0
+0c1c:084e dos_seek  (far=True, called by game_flow)
+    platform: int(int fh u16 lo u16 hi) | INT 21h 4200h; 1 ok 0 error
+0c1c:0868 dos_open_read  (far=True, called by game_flow)
+    platform: int(char *name) | INT 21h 3D00h; handle or -1
+0c1c:087a dos_file_size  (far=True, called by game_flow)
+    platform: u16(int fh) | low word of size; rewinds
+0c1c:08a0 dos_read  (far=True, called by game_flow)
+    platform: u16(void far *buf u16 n int fh) | INT 21h 3Fh
+0c1c:08b9 dos_close  (far=True, called by game_flow)
+    platform: void(int fh) | INT 21h 3Eh
+0c1c:08c5 dissolve_page1_to_0  (far=True, called by game_flow)
+    platform: void(void) | 64 steps (8x8 ordered), 1 per tick, abort on DS:008C
+0c1c:0b5b pal_fade_out  (far=True, called by game_flow)
+    platform: void(void) | 16 uploads, (c*l+8)>>4, l = 15..0
+0c1c:0b89 page_clear_low_colours  (far=True, called by game_flow)
+    platform: void(void) | page DS:009A: bytes < 80h := 0
+0c1c:0bb7 pal_fade_out_low  (far=True, called by game_flow)
+    platform: void(void) | fade out colours 0-127
+0c1c:0be5 pal_fade_in  (far=True, called by game_flow)
+    platform: void(void) | 16 uploads, l = 1..16
+0c1c:0c16 pal_black  (far=True, called by game_flow)
+    platform: void(void) | upload 768 zeros
+0c1c:0c2a pal_set  (far=True, called by game_flow)
+    platform: void(void) | upload DS:0B6A
+0c1c:0c45 rle_draw_page  (far=True, called by game_flow)
+    platform: void(u8 *pairs int npairs int width int x int y_bottom) | (colour+DS:90F0, count) runs into page DS:009A, bottom-up
+0c1c:0e2d kbd_install  (far=True, called by game_flow)
+    platform: void(void) | hooks INT 9 -> 0c1c:0e98; DS:009D = 1
+0c1c:0e7d kbd_restore  (far=True, called by game_flow)
+    platform: void(void) | restores INT 9 if DS:009D
+0c1c:109f timer_install  (far=True, called by sound)
+    platform: far | PIT ch0 divisor 2000h (145.65 Hz), hooks INT 8; its DS:C5E4 store hits 185f:01b4 (DS = CS bug)
+    seed: far | PIT ch0 divisor 2000h (145.6 Hz), hooks INT 8
+0c1c:10cf timer_restore  (far=True, called by sound)
+    platform: far | PIT back to 18.2 Hz and old INT 8
+    seed: far | PIT back to 18.2 Hz
+0c1c:11f7 rect_save  (far=True, called by game_flow)
+    platform: void(int x0 int x1 int y0 int y1) | page DS:009A rect -> DS:90D0 buffer (packed rows)
+0c1c:1303 rect_restore  (far=True, called by game_flow)
+    platform: void(int x0 int x1 int y0 int y1) | inverse of rect_save
+0c1c:13d8 view_present  (far=True, called by game_flow, hud)
+    platform: void(void) | per race frame: mirror_present, then 3D buffer DS:90D0 -> page 0 with mirror hole
+0c1c:15c7 page_mirror_left_half  (far=True, called by game_flow)
+    platform: void(void) | page DS:009A: (319-x) := (x) for x < 160
+0c1c:1759 rle_draw_viewbuf  (far=True, called by hud)
+    hud: far void(u8 *pairs int count int y_bottom) | RLE 320 wide into the 3D buffer DS:90D0, colour 0Fh transparent
+    platform: void(u8 *pairs int npairs int y_bottom) | 320-wide runs into DS:90D0, colour 0Fh transparent
+0c1c:1f32 print_text_bios  (far=True, called by game_flow)
+    platform: void(char *s int col int row) | INT 10h AH=2/9 text output (setup screen and fatal messages)
+16cf:0006 gfx_detect  (far=True, called by game_flow)
+    platform: int(void) | adapter: 11h/12h/13h VGA-MCGA, 0Dh/0Fh/10h EGA, 07h/0Bh mono, 09h Tandy, 04h CGA
+16d9:0002 gfx_line_to  (far=False, called by game_flow, hud)
+    hud: far void(int x int y) | platform: Bresenham via gfx_plot, axis-parallel via gfx_fill_clipped; end point becomes current
+    platform: int(int x int y) | line from pen, ends inclusive; h/v lines via gfx_fill_rect_clipped; pen := end
+16e5:0007 gfx_get_draw_seg  (far=True, called by game_flow)
+    platform: u16(void) | returns DS:BD88 (Ghidra FUN_16d9_00c7)
+16e5:000b gfx_get_mode  (far=False, called by game_flow)
+    platform: int(void) | DS:BD49, or BIOS mode (INT 10h AH=0Fh) if negative
+16e6:000e mouse_init  (far=True, called by game_flow)
+    platform: int(void) | INT 33h AX=0; sets BD46/BD47 and coordinate shifts BD4F/BD50; returns buttons or 0
+16ec:0004 mouse_set_range  (far=False, called by game_flow)
+    platform: int(int x0 int x1 int y0 int y1) | INT 33h AX=7/8 (shifted)
+16ef:0009 mouse_set_pos  (far=False, called by game_flow, hud, simulation)
+    hud: far void(int x int y) | platform: INT 33h fn 4
+    platform: int(int x int y) | INT 33h AX=4 (shifted)
+16f1:000d mouse_get  (far=False, called by simulation)
+    platform: int(int *x int *y int *buttons) | INT 33h AX=3, unshifted, x clamped to width-1
+16f5:0008 mouse_show  (far=False, called by game_flow)
+    platform: int(int on) | INT 33h AX=1/2 on change
+16fb:0008 gfx_move_to  (far=False, called by game_flow, hud)
+    hud: far void(int x int y) | platform: DS:BD4B/BD4D
+    platform: int(int x int y) | pen DS:BD4B/BD4D
+16fc:000b text_exit_clear  (far=False, called by game_flow)
+    platform: int(void) | text mode only: DOS ESC[2J, clear page if cursor not at 0,0
+16ff:000b bios_wait_ticks  (far=False, called by game_flow, hud)
+    hud: far void(int n) | platform: INT 1Ah busy wait
+    platform: int(int n) | busy-wait n BIOS ticks (INT 1Ah)
+1703:0001 gfx_set_colour  (far=True, called by game_flow, hud, simulation)
+    hud: far void(int c) | platform: DS:BD41/BD42 = c
+    platform: int(int c) | 13h: BD41 = BD42 = c
+170e:0002 gfx_set_copy_page  (far=True, called by game_flow)
+    hud: far void(int page) | platform: display page select (DS:BD43)
+    platform: int(int p) | 13h: BD43 = p, BD86 = BD8C[p]; source of 17eb; not a display select (hud.md: gfx_show_page)
+1714:000e gfx_set_draw_page  (far=True, called by game_flow, hud, render3d, simulation)
+    hud: far void(int page) | platform: DS:BD40 = page, DS:BD88 = DS:BD8C[page]; game mirrors in DS:009A
+    platform: int(int p) | 13h: BD40 = p, BD88 = BD8C[p]
+171b:000a gfx_set_visible_page  (far=True, called by game_flow)
+    platform: int(int p) | 13h: swaps page table entries and contents; TD3 calls it once with 0 (no-op)
+172d:000e gfx_alloc_page  (far=True, called by game_flow)
+    platform: int(int p) | 13h: DOS 48h FA0h paragraphs -> BD8C[p], zeroed; returns 0 / DOS error 7,8 / 1
+1736:0004 gfx_free_page  (far=True, called by game_flow)
+    platform: int(int p) | 13h: DOS 49h, BD8C[p] = A000h
+173c:0005 gfx_put_pixel  (far=True, called by game_flow, hud)
+    hud: far void(int x int y) | platform: clipped to DS:BD53..BD51 x DS:BD57..BD55
+    platform: int(int x int y) | clipped; 13h draw[y*320+x] = BD41
+1776:0008 gfx_set_display_offset  (far=True, called by game_flow, render3d)
+    platform: int(int x int y) | CRTC start = y*80 + x/4 after vretrace (screen shake)
+1785:000b gfx_fill_rect  (far=True, called by game_flow, hud, simulation)
+    hud: far void(int x0 int x1 int y0 int y1) | platform: inclusive, no clipping
+    platform: int(int x0 int x1 int y0 int y1) | inclusive, unclipped, colour BD41, 13h bottom row first
+17eb:0006 gfx_copy_rect_from_copy_page  (far=True, called by game_flow)
+    platform: int(int x0 int x1 int y0 int y1) | copy page (BD86) -> draw page (BD88)
+1818:0003 gfx_copy_rect  (far=True, called by game_flow, hud)
+    hud: far void(int x0 int x1 int y0 int y1 int dx int dy_bottom int src int dst) | platform: rows copied bottom-up, dst given by its bottom-left, no clipping
+    platform: int(int x0 int x1 int y0 int y1 int dx int dy_bottom int src int dst) | page to page, rows bottom-up, dst y = bottom row
+185f:000b gfx_draw_bitmap  (far=True, called by game_flow, hud)
+    hud: far void(u8 *bits int bytes_per_row int rows) | platform: 1-bit mask, first row = bottom at current y, MSB left, set bits in current colour
+    platform: int(u8 *bits int bytes_per_row int rows) | 1bpp at pen, set bits = BD41, rows upward; 185f:01b4 (Tandy path) is overwritten by timer_install
+18b3:0004 gfx_read_bitmap  (far=True, called by game_flow, hud)
+    hud: far void(u8 *bits int bytes_per_row int rows) | platform: mask of pixels equal to the current colour (same geometry as gfx_draw_mask)
+    platform: int(u8 *dst int bytes_per_row int rows) | 1bpp mask of pixels == BD41 at pen, rows upward
+18f3:0002 gfx_set_ega_palette  (far=True, called by game_flow)
+    platform: int(u16 *pal16) | EGA/Tandy/13h DAC 0-15; not called in the VGA build
+1905:000b gfx_set_mode  (far=True, called by game_flow)
+    platform: int(int mode) | mode 00..14h, <0 = adopt BIOS mode; mode*2 -> DS:BD44; TD3 VGA uses 13h (BIOS chain-4), 14h unused
+    seed: int(int mode) | mode 00..14h, <0 = current BIOS mode; stores mode*2 in DS:BD44 (dispatch index) and mode in DS:BD49. 13h = BIOS mode 13h, 14h = unchained 32
+1940:01a2 exit  (far=False, called by game_flow)
+    seed: far | MSC 5.1 RTL (matches TD2 13a8:0582, score 1.00)
+1940:0240 fclose  (far=True, called by game_flow, sound)
+    seed: far | MSC 5.1 RTL (matches TD2 13a8:0978, score 0.80)
+1940:0308 fopen  (far=True, called by game_flow, sound)
+    platform: far | MSC 5.1 RTL
+1940:0334 fread  (far=True, called by game_flow)
+    platform: far | MSC 5.1 RTL
+1940:0526 fwrite  (far=True, called by game_flow)
+    platform: far | MSC 5.1 RTL
+1940:066c _ffree  (far=True, called by game_flow)
+    platform: far | MSC 5.1 RTL (far heap free)
+1940:0681 _fmalloc  (far=True, called by game_flow)
+    platform: far | MSC 5.1 RTL
+1940:0746 strcpy  (far=True, called by game_flow, hud, sound)
+    seed: far | MSC 5.1 RTL (matches TD2 13a8:2956, score 1.00)
+1940:0778 strcmp  (far=True, called by game_flow)
+    seed: far | MSC 5.1 RTL (matches TD2 13a8:2988, score 1.00)
+1940:07a4 strlen  (far=True, called by game_flow)
+    seed: far | MSC 5.1 RTL (matches TD2 13a8:29b4, score 1.00)
+1940:07c4 getch  (far=True, called by game_flow)
+    platform: far | MSC 5.1 RTL (DOS 08h)
+1940:07dc getcwd  (far=True, called by game_flow)
+    platform: far | MSC 5.1 RTL
+1940:08a6 _harderr  (far=True, called by game_flow)
+    platform: far | MSC 5.1 RTL (INT 24h hook)
+1940:08f3 _hardresume  (far=False, called by game_flow)
+    platform: far | MSC 5.1 RTL
+1940:08fc _aFldiv  (far=True, called by game_flow, simulation)
+    platform: far | MSC 5.1 RTL long signed division
+1940:0998 _aFlmul  (far=True, called by game_flow, simulation)
+    seed: far | MSC 5.1 RTL (matches TD2 13a8:2ee8, score 1.00)
+1940:09cc _aFNaldiv  (far=True, called by simulation)
+    platform: far | MSC 5.1 RTL long /= (signed)
+1940:09f0 _aFNauldiv  (far=True, called by game_flow)
+    platform: far | MSC 5.1 RTL long /= (unsigned)
+1940:0a14 _aFuldiv  (far=True, called by game_flow, simulation)
+    platform: far | MSC 5.1 RTL unsigned long division
+1940:0a76 _aFulrem  (far=True, called by game_flow)
+    platform: far | MSC 5.1 RTL unsigned long remainder
+== module sound
+01f4:1cf0 snd_init  (far=True, called by game_flow)
+    sound: far | once: sfx_init, music_init with DS:0096, DS:0096 = C5E3, timer_install; DS:009C = 1
+01f4:1d22 music_for_state  (far=True, called by game_flow, hud, simulation)
+    sound: far | (arg): plays the music of main state DS:0086 (THEME / menu buffer / scene A-C by arg)
+01f4:1e9a snd_shutdown  (far=True, called by game_flow)
+    sound: far | sfx_play(0), music_stop(0), timer_restore; DS:009C = 0
+0c1c:1110 sfx_play  (far=True, called by game_flow, hud, simulation)
+    sound: far | (id): far C wrapper of sfx_play_ax
+0c1c:111d sfx_play_ax  (far=True, called by hud, render3d, simulation)
+    sound: far | AX = effect id (0 = stop all, |80h = stop id): checks sound on/replay/effects off, priority DS:915E, script DS:918E
+0e12:23df engine_sound  (far=False, called by render3d)
+    sound: near | per frame: start effect 1, pitch from DS:129C -> voice_noteword directly (see sound.md)
+1ace:00b4 music_stop  (far=True, called by game_flow, hud, simulation)
+    sound: far | (mode): 0 = stop now; bit 7 = stop at next loop/Bx event; else fade-out speed (unused)
+1ace:03d6 snd_tick  (far=True, called by platform)
+    sound: far | timer tick (145.65 Hz, from 0c1c:10e8): clear voice_busy, sfx_modulate, sfx_step, music fade, run due music events
+== module game_flow
+0000:0000 main  (far=False, called by platform)
+    game_flow: void(void) | state machine on DS:0086: FFh config, 1 title, 2 protection check, 3 top scores, 4 menus, 5 race (legs x players, results math), 6 = between
+    seed: void(void) | game state machine on DS:0086 (1 title, 2 protection check, 4 menus, 5 race legs, 3/6 results)
+0000:0d62 pal_load  (far=True, called by hud)
+    game_flow: far void(char *name) | 112 colours (336 bytes) -> DS:0B6A palette buffer at colour 16 + DS:90F0; applied at once in VGA unless game_state == 5
+0000:0ee0 file_load_far  (far=True, called by hud, sound)
+    game_flow: far void(char *name void far *dst) | same as file_load_near into a far buffer; sets DS:E86A = bytes read, DS:E86C = 0
+0000:0f58 random  (far=True, called by platform, render3d)
+    game_flow: far u16(void) | seed DS:00D2 (u32) = seed*41C64E6Dh + 3039h; returns (seed >> 16) & 7FFFh (not the MSC rand constants)
+0000:0f80 key_poll  (far=True, called by hud, platform)
+    game_flow: far void(u16 *key) | takes DS:915B (or joystick keys), handles the hotkeys Esc/Ctrl-P/Q/S/E/J/K/A/D, stores the result in *key and DS:E08C; any key -> DS:008C = 
+0000:1518 nop_1518  (far=True, called by platform)
+    game_flow: far void(void) | empty
+0000:151a nop_151a  (far=True, called by platform)
+    game_flow: far void(void) | empty
+0000:179c message_box  (far=True, called by hud, render3d, simulation)
+    game_flow: far void(int id) | message DS:16DA[id] in a grey box at y 71h-85h; per-id wait/prompt behaviour (Y/N, drive letter, steering 1-9, joystick calibration...)
+0000:1e44 joystick_keys  (far=True, called by hud)
+    game_flow: far u16(u16 *key) | if DS:0092: read joystick, button -> 0Dh, else direction -> DS:00AA[DS:947B & 0Fh] (arrow codes)
+01f4:1864 gfx_frame  (far=True, called by hud)
+    game_flow: far void(int x0 int x1 int y0 int y1) | rectangle outline (name from hud.md)
+    hud: far void(int x0 int x1 int y0 int y1) | rectangle outline with gfx_lineto
+01f4:1a82 print_records  (far=True, called by hud, simulation)
+    game_flow: far int(u8 *s int off) | prints records {col,row,text} ended by 80h (next record) or AAh (end); returns the offset after AAh
+01f4:1c00 ega_pal_black  (far=True, called by hud)
+    game_flow: far void(void) | clears DS:E788[32]; non-VGA: EGA palette from it (all black)
+01f4:1c34 ega_pal_restore  (far=True, called by hud)
+    game_flow: far void(void) | non-VGA: EGA palette from DS:0E6A
+01f4:1c48 pal_apply  (far=True, called by hud)
+    game_flow: far void(void) | VGA: upload the DS:0B6A palette buffer (0c1c:0c2a)
+01f4:59ac pic_draw  (far=True, called by hud)
+    game_flow: far void(u8 *pairs int npairs int width int x int ybottom int flag) | VGA: rle_draw_page 0c1c:0c45 (flag unused); else rle_draw_dither 0c1c:1b8a (name from hud.md)
+    hud: far void(u8 *pairs int count int width int x int y_bottom int ega) | VGA: 0c1c:0c45 RLE into DS:90CC[DS:009A], colour + DS:90F0
+== module hud
+0792:0414 race_input  (far=True, called by game_flow)
+    game_flow: far void(int phase) | phase 0/1: joystick keys (phase 1 only when the last frame took >= 29h ticks) + key_dispatch; phase 2: key_poll + 0e12:0084; then wheel auto
+    hud: far void(int phase) | phase 2: key_read + key_code_dispatch; phases 0/1: joy_read (phase 1 only if DS:B70E > 28h) + controls_update; wheel self-centring; wheel_up
+    seed: far void(int phase) | key handling between frame phases 0/1/2
+0792:04ca chase_view_exit  (far=True, called by game_flow)
+    game_flow: far void(void) | back to the cockpit view: music, top bar and cockpit from page 1, compass strip, HUD caches = FFh (name from hud.md)
+    hud: far void(void) | restore top bar and centre cockpit from page 1, redraw compass strip (17Ah pairs), invalidate instrument caches (E5B7 E860 CC56 CE9D B712 E5
+0792:059a chase_view_enter  (far=True, called by game_flow)
+    game_flow: far void(void) | music off, save top bar rows 0-15 to page 1, blank them, replay_panel_draw, DS:CC92 = 1 (name from hud.md)
+    hud: far void(void) | music off, save top bar rows 0-15 to page 1, blank it, replay_panel_draw, DS:CC92 = 1
+0792:0602 replay_panel_draw  (far=True, called by simulation)
+    game_flow: far void(void) | CHASE.LZ panel rows 70h-C7h, CHASE CAR VIEW / INSTANT REPLAY + button and viewpoint labels; message 17h when a replay starts (name from hud.
+    hud: far void(void) | grey framed panel rows 112-199, CHASE.LZ 248x64 at (56,195), CHASE CAR VIEW / INSTANT REPLAY texts and button labels
+0792:0922 cockpit_setup  (far=True, called by game_flow)
+    game_flow: far void(void) | (hud) palettes OTWCOL + <car>COL, cockpit pictures, .ETC and knob masks, backings, L/R.BOT, first frame
+    hud: far void(void) | OTWCOL + <car>COL palettes, cockpit_pictures_draw(199), .ETC, marker and 6 knob masks (gfx_read_mask), cockpit copy and gauge backings to pa
+0792:10a6 hud_reset_topbar  (far=True, called by game_flow)
+    game_flow: far void(void) | DS:B709 = FFh; DS:BD34 = FFFFh unless race_state 2; page 0 (name from hud.md)
+    hud: far void(void) | DS:B709 = FFh; DS:BD34 = FFFFh unless race_state == 2; page 0
+0792:10c8 shifter_update  (far=True, called by game_flow)
+    hud: far void(void) | per frame: lever step toward DS:CC57, 16-frame hold, hide unless DS:B6DB
+0792:1310 wheel_update  (far=True, called by game_flow)
+    hud: far void(void) | rim picture by DS:E33A (<8 L, 8-24 centre, >24 R) via wheel_rim_blit; erase/save/draw steering marker; tach/odometer redraw on rim change
+0792:15d4 tach_draw  (far=True, called by game_flow)
+    descriptions: far | needle DS:CC64 length, angle DS:CC66*(rpm>>5) - DS:CC8A*500h, centre DS:CC68/CC6A, colour DS:CEB4
+    hud: far void(void) | if step DS:E5AE != DS:CC56: restore backing (page1 168..), needle colour CEB4 from (CC68,CC6A) angle CC66*step-CC8A*500h len CC64
+0792:16c4 odometer_draw  (far=True, called by game_flow)
+    descriptions: far | at DS:CC78/CC7A; colours DS:CEB2/CEB3; rolling last digit DS:CEA8 (0-59)
+    hud: far void(void) | odometer rendered into the page-1 speedo backing at (CC78,CC7A) (backing coords), rolling digits DS:B719 strip; restores speedo backing and 
+0792:1952 odometer_update  (far=True, called by game_flow)
+    descriptions: far | accumulates |velocity| into DS:1186; each DS:94B9 units -> DS:CEA8+1, 60 -> DS:E55E+1 (max 99)
+    hud: far void(void) | accumulate |DS:124E:1250| in DS:1186 u32; per DS:94B9: DS:CEA8++ (0..60, 61 -> 1 with DS:E55E++ max 99)
+0792:19ca water_overlay_start  (far=True, called by game_flow)
+    game_flow: far void(void) | (hud) WATER.LZ on page 1, sound 6, first water_roll_step; called by race_run on a crash into water
+    hud: far void(void) | WATER.LZ 160x96 on page 1 at x 0 and 160, sfx 6, first water_roll_step
+0792:1a72 water_roll_step  (far=True, called by game_flow)
+    game_flow: far void(void) | (hud) one step of the rolling water picture; half-window variant waits 1 BIOS tick
+    hud: far void(void) | page1 rows 0-95 -> view (skipping mirror x 168-255 of rows 16-31), rotate page-1 picture down 2 rows; half window variant waits 1 BIOS tick
+0792:1c00 broken_glass_overlay  (far=True, called by game_flow)
+    game_flow: far void(void) | (hud) sound 2, BROKE.LZ over the 3D buffer (colour 0Fh transparent), view_present
+    hud: far void(void) | sfx 2, BROKE.LZ 320x96 over the 3D buffer with colour 0Fh transparent (0c1c:1759), 0e12:7c21, view_present
+0792:1c66 cockpit_pictures_draw  (far=True, called by game_flow)
+    game_flow: far void(int ybottom) | (hud) 2.BOT, 1.BOT (+ .TOP and page copy when C7h), COMPASS strip
+    hud: far void(int bottom_y) | 2.BOT at bottom_y, 1.BOT at bottom_y-44 (current page); if 199: .TOP and page 1 -> page 0; COMPASS strip to page 1 with 180h pairs (file has
+0e12:0b1d race_clock_hud  (far=False, called by render3d)
+    hud: near void(void) | from frame_update (not in menu demo): race clock tick (1 s = 5 frames, only when DS:B707), then clock_draw compass_draw radar_draw; nothing 
+    simulation: near void(void) | race clock (5 frames = 1 s) then clock_draw compass_draw radar_detector
+== module simulation
+0977:0008 car_physics  (far=False, called by render3d)
+    simulation: far void(void) | per frame from frame_update unless frozen/replay: engine torque/drag/resistance; speed; ground contact and gravity; grip/skid; steering; gau
+0ab4:120f replay_clear  (far=True, called by game_flow)
+    simulation: far void(void) | zero the ring buffer CS 0ab4:020F (800h words)
+0ab4:1220 replay_update  (far=True, called by render3d)
+    simulation: far void(void) | per frame: record ring buffer (state 0), play back (1), wreck animation (2)
+0e12:0080 controls_poll_far  (far=True, called by hud)
+    seed: far | dispatch key code DS:E08C: 40h..7Fh via CS:0000 table, 81h..8Ah via DS:B6EF
+    simulation: far void(void) | call 0e12:0751; retf: far stub of controls_poll used by race_input(0/1); the seed name key_dispatch belongs to 0e12:0084
+0e12:0084 key_dispatch  (far=True, called by hud)
+    hud: far | page 0; dispatch DS:E08C via CS:0000 (40h-7Fh) / DS:B6EF (81h-8Ah); the seed name key_dispatch at 0e12:0080 is the controls poller (call 075
+    simulation: far void(void) | dispatch DS:E08C: 40h-7Fh via CS:0000 table; 81h-8Ah via DS:B6EF when race_state < 2; else controls_poll
+0e12:044e life_lost  (far=True, called by game_flow)
+    simulation: far void(int skip) | lives message; F10 replay request; next life (race_state 2) or game over (3)
+0e12:095a auto_shift  (far=False, called by render3d)
+    descriptions: near | auto-shift on DS:120A (up) / DS:120C (down)
+    simulation: near void(void) | per frame: automatic up/down shifts (DS:0095) and CERV in-range shifts
+0e12:0f31 crash_start  (far=False, called by render3d)
+    render3d: near void() | once: B78D=1, music_stop, shake counter 947C=0x10, BAAB = object whose id range holds BAA9 [verified]
+    simulation: near void(void) | latch crashed B78D; music stop; shake 10h; crash_object = object whose face range holds BAA9
+0e12:0fd6 bounce_back  (far=False, called by render3d)
+    render3d: near, keeps BX,CX | 947C=4, copy car state DS:1282[6] → DS:125E[6] [verified (code), likely (meaning)]
+    simulation: near void(void) | restore position from 3 frames ago; shake = 4
+0e12:2465 life_reset  (far=True, called by game_flow, render3d)
+    render3d: far | optional restart pos (B9CB..), colour remap, 03d4, reset ~40 race vars [verified]
+    simulation: far void(void) | per-life reset; respawn at road_mem[2] after F6 or a crash; immunity 32h
+0e12:33f7 sprite_collisions  (far=False, called by render3d)
+    render3d: near | radius test on the depth key against 95CF, effect by collision class [verified (code); effects likely]
+    simulation: near void(void) | sprite classes 20h-E0h (knock over, solid, splat, go back, wrong way)
+    world: near | sprite collision classes (id hi & E0h)
+0e12:34f1 near_face_hits  (far=False, called by render3d)
+    render3d: near | walk sorted faces with depth ≤ 94C1: types 18h/19h/1Bh → 4631, 1Ah → 4590, 1/2 → crash or bump [verified]
+    simulation: near void(void) | faces within depth 60h: type 1 solid, 2 vehicles, 18h-1Bh signs, 1Ah barriers
+0e12:4c51 replay_start  (far=False, called by render3d)
+    render3d: near void() | enter replay camera (948B=1, 94B2=1), end-mark the recorder ring [verified]
+    simulation: near void(void) | replay / crash camera: replay_state 1, ext_view 1, end marker (index & 7FFh bug)
+0e12:4d60 objects_update  (far=False, called by render3d)
+    render3d: near, no args | calls 4fc7, 509b, 5ad4, 5df9 [verified]
+    simulation: near void(void) | calls 4fc7 509b 5ad4 5df9
+0e12:5e70 crossing_gate_update  (far=False, called by render3d)
+    render3d: near | train (models 12h–14h) near first gate → gate angle BCD8, bells; calls 5f57 for up to 2 gates [verified]
+    simulation: near void(void) | train near gate -> BCD8 gate position; bells sfx 7/8
+    world: near | object model 10h vs train models 12h-14h; speed 95D6
+0e12:5ffe police_update  (far=False, called by render3d)
+    render3d: near | police (models 11h, 30h): radar level, pursuit start, catch/ticket, siren sound [verified (code), likely (meaning)]
+    simulation: near void(void) | radar level B710; chase at speed >= 48; pull-over 30 frames; ticket +20 s; siren sfx 14h/94h
+0e12:61fd opponent_times_finalize  (far=True, called by game_flow)
+    render3d: far (race_run end, if B09) | 624a for both opponents, copy times to results records 1,2 (DS:E80F, E82A) [verified]
+    simulation: far void(void) | opponent times at leg end (Likely)
+0e12:6e92 camera_pos_update  (far=False, called by render3d)
+    simulation: near void(void) | camera X/Z and probe point 94A1/94A3; sun sprite 8; crash camera target
+== module render3d
+0e12:03d4 detail_apply  (far=False, called by simulation)
+    render3d: near | view window B6DE by detail, sprite seed mask, traffic thinning by skill [verified]
+    simulation: near void(void) | view distance B6DE/E0/E2 and vegetation mask BA56 by detail; strips traffic flags by skill
+0e12:0fa1 screen_shake_step  (far=True, called by game_flow)
+    render3d: far void() | if 947C: 947C--, unless E776==0x13 set CRTC display start from table 0e12:0F81[947C] [verified]
+    simulation: far void(void) | per frame: DS:947C countdown -> display offset from CS table 0e12:0F81
+0e12:22fe atan2_xz  (far=False, called by simulation)
+    render3d: CX=x, DX=z (s16) → AX=angle; clobbers BP,DI,CX,DX | angle = atan2(−z, x), 10000h/turn, table 0e12:12F6 [verified]
+    simulation: near (CX x DX z) -> AX | atan2 via CS 0e12:12F6/16F8; also returns CX min DX max
+0e12:234b polar  (far=True, called by hud, simulation)
+    hud: far void(u16 angle u16 len) | a = (angle>>7)&1FFh; x = hi16(sin_tab[i]*len), y = hi16(sin_tab[80h-i]*len) with quadrant signs -> DS:9460/9462; 0 = up, clockwise; sin_tab 
+    render3d: far cdecl (angle, r) → 9460=r·sin, 9462=r·cos | 512-step sine table 0e12:0FF2 [verified]
+    simulation: far void(u16 angle; u16 len) | DS:9460 = len*sin; DS:9462 = len*cos (table CS 0e12:0FF2)
+0e12:2537 frame_buffers_init  (far=True, called by game_flow)
+    render3d: far void() | 90D0 = normalised seg of far CC5C (7810h bytes), 90D2 = seg E7DE+1 (DOS block of 300h paragraphs) [verified]
+0e12:255e leg_state_reset  (far=True, called by game_flow)
+    render3d: far | seed (10–12 bits set) → BA56/B6ED, 25f4, 2465, zero leg state, car pos = sprite 0 [verified]
+    world: far void(void) | random seed BA56; player pos 949A/949C = 9CF3/9F73[0]
+0e12:261c build_colour_remap  (far=True, called by game_flow, simulation)
+    objects: far | fill DS:E5B0[32] colour-code remap (day/night DS:95C7, weather DS:BC75/BC77)
+    render3d: far void() | 32-byte colour-code remap at far E5B0 (day/night, rain, snow); settled name (alias colour_code_map_build) [verified]
+    world: far void(void) | DS:E5B0[32] from 95C7 / BC75 / BC77
+0e12:2789 sprites_prescale  (far=True, called by game_flow)
+    render3d: far, no args; saves SI DI ES | builds the pre-scaled sprite cache in the far buffer E53C from the sprite file at DS:2500; fatal message 1Ah on overflow [verified]
+    world: far void(void) | remap sprite pixels (non-VGA) and build scaled copies in far DS:E53C; message 1Ah on overflow
+0e12:409c view_setup  (far=True, called by game_flow, simulation)
+    render3d: far void() | view size from 09C4/B6DC: BA8F,BA91,BA93,BA95,BA97,BA99,BD3D,B7AF[8]; patches 24 clip immediates in CS (table DS:BAE4) [verified]
+0e12:4590 plate_fold_down  (far=False, called by simulation)
+    render3d: ES:BP=&face.w3, keeps BX,CX | type-1Ah face pair: fold the 2nd face flat, both faces → type 3; sfx 4 [verified]
+    simulation: near (ES:BP rec+6) | flatten a type-1Ah barrier; sfx 4; shake 5; bump 3
+0e12:47fc windscreen_splat  (far=False, called by simulation)
+    render3d: near (ax=rand word, dl=type) | put drop in 64-slot ring; compute wiper key [verified]
+    world: near | class 80h sprites
+0e12:4fc7 parked_vehicles_emit  (far=False, called by simulation)
+    render3d: near; clobbers all | emit objects 0..A477−1 with flags 1000h set / 2000h clear (parked vehicles; lightning object) via 539d [verified]
+    simulation: near void(void) | parked 1000h objects; lightning flash + thunder sfx 9 when rain >= 6
+0e12:52a3 obj_emit_vehicle_moving  (far=False, called by simulation)
+    objects: near | like 539d for moving objects; reuses cached vertices shifted by DS:BCC4/BCC6/BCC8 when unchanged
+    render3d: BX=slot, DX=Manhattan dist → CX=nf (normal path) | set placement from object arrays, pick model/LOD, transform vertices (75c1) [verified]
+0e12:5df9 lighthouse_rotate  (far=False, called by simulation)
+    render3d: near | moves 2 vertices of the lighthouse's first face on a circle (beam) [verified]
+    world: near | object model 0Fh; speed 95D5
+0e12:5f57 crossing_gate_arm_place  (far=False, called by simulation)
+    render3d: SI=gate slot | place arm tip vertices from BCD8, arm length 95D6 [verified]
+0e12:7487 model_emit_faces  (far=False, called by simulation)
+    objects: near | copy CX-DS:BD24 faces to 10-byte records at DS:E5B8 (4 words + vertex base DS:945E, colour codes -> pixel pair via DS:E5B0, DS:B4B9, DS:B6B9
+    render3d: near (ES:SI=first face, CX=nf, 945E=vertex base) | append nf−BD24 faces (max 640h) as 10-byte records with remapped colour pair; record object range; note gate/lighthouse objects. Settled (wa
+    world: near | face list + colour pair (B4B9/B6B9)
+0e12:7653 vertex_rotate  (far=False, called by simulation)
+    objects: near | read A=[si], B=[si+bx], C=[si+2bx]; rotate B/C by heading DS:946A (sin/cos DS:B851/B7CF), shear A by DS:BD38; returns DX:AX
+    render3d: near (ES:SI=&A[i], BX=2·nv, BD38, 946A) → DX=A', AX=B', CX=C' | pitch shear, fine rotation (64 steps/quarter, Q15 tables B7CF/B851), quarter turn. Settled (was vert_rotate / vertex_rotate) [verified]
+    world: near | quarter turns + sin/cos by 946A
+0e12:76ec frame_update  (far=True, called by game_flow, hud)
+    render3d: far void() | per frame: shake, sim, camera select, 70cd, 34c3 (3D build + sky/ground into V) [verified]
+    seed: far | per-frame world/car update (calls 0977:0008, 0ab4:1220) and first draw pass
+0e12:77d5 frame_draw  (far=True, called by game_flow, hud)
+    render3d: far void() | page 1; 323e faces+sprites into V/M; overlays; mirror frame; page 0 [verified]
+    seed: far | second draw pass / overlays
+0e12:7c21 mirror_frame_draw  (far=True, called by hud)
+    render3d: far void() | clear M grey when invalid/turned off; draw M border; draw mirror lower rim into V [verified]
