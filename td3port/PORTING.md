@@ -14,7 +14,9 @@ tools are working reference decoders: `tools/td3res.py` (archive, LZW), `td3img.
 ## Architecture
 
 ```
-main.c          args, mem_load_exe(), host_init(), vga_init(), game_main()                 (coordinator)
+main.c          args, mem_load_exe(), host_init(), vga_init(), modules_init(), game_main()  (coordinator)
+portcfg.h/.c    command-line options applied inside the game (--car/--course/--skill/--sound) (coordinator)
+launcher/       the wxWidgets launcher "Test Drive III" (-DTD3_LAUNCHER=ON, launcher/README.md)  (coordinator)
 mem.h/.c        real-mode memory: TDIII.EXE image at segment 0x1000, DGROUP 0x2BE4, heap above,
                 VGA page 0 at A000:0000                                                       (coordinator)
 host.h/.c       SDL3: window/present, 145.652 Hz tick, 70 Hz retrace, XT keyboard bytes, mouse,
@@ -35,8 +37,6 @@ game/game.h     cross-subsystem prototypes of the game code                     
 
 Only `host.c`, `mem.c`, `main.c` and the file wrappers include SDL. Game, platform and sound code talk
 to the host through `host.h`. Each module declares its API in its own header.
-`game/skeleton.c` is the phase 4 placeholder `game_main`; delete it when `game/flow.c` provides the
-real one.
 
 ## Memory model (`mem.h`)
 
@@ -76,7 +76,7 @@ real one.
 * **Every busy-wait loop of the original must call `host_pump()` once per iteration** (tick waits, key
   polls, delays). Port 3DAh retrace polls become `host_wait_vretrace()` (70.086 Hz).
 * **Race frame pacing (PLAN.md decision 4):** `race_run` keeps the original rule "loop until at least
-  N ticks have passed since the frame started" with N = `host_frame_ticks()` (default 29, option
+  N ticks have passed since the frame started" with N = `host_frame_ticks()` (default 23, option
   `--frame-ticks`, original constant 5), and `DS:B70E` = the ticks the frame actually took. Nothing is
   converted to real time: the simulation and the race clock stay per frame. Unpaced loops of the
   original (the main menu's rotating car, water roll, dissolves) are paced as the specs recommend.

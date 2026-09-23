@@ -2,6 +2,7 @@
  * and the file loaders, the name hash, PLAYDISK.DAT, car / scene .LST, the .HI file and the shared
  * front-end data. Segments 0000 / 01f4. */
 #include "game/game.h"
+#include "portcfg.h"
 
 #define ARCHIVE_DIR 0x049E          /* DS:049E, 14-byte entries {h2, h1, archive, 0, offset u32, size u32} */
 
@@ -186,6 +187,7 @@ s16 playdisk_load(void)
             && crt_fread(ds_ptr(DS_cars_on_disk), 1, 4, f) == 4) {
             crt_fread(ds_ptr(DS_steering_response), 1, 1, f);
             crt_fclose(f);
+            portcfg_apply_playdisk();       /* PORT: --car / --course / --skill (launcher options) */
             if (car_lst_load((s16)DSW(DS_car_index), DS_path_car, DS_car_name, DS_car_pic_pairs) == 0
                 && scene_lst_load((s16)DSW(DS_scene_index), DS_path_scene, DS_scene_name) == 0) {
                 DSB(DS_playdisk_ok) = 1;

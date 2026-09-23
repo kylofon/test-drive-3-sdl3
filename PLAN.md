@@ -97,8 +97,12 @@ distance from the same geometry. That goes further than the TD1/TD2 overlays.
 4. **Frame pacing**: design speed. The game advances physics, traffic and the race clock once per
    frame (1 clock second = 5 frames), tuned for ~5 fps. The port keeps the original rule "wait until
    ≥ N timer ticks (145.6 Hz) since the frame started", with DS:B70E = ticks actually elapsed, and
-   defaults to N ≈ 29 (~5 fps, real-time clock and speeds). N is configurable (5 = original engine
-   cap, ~5.8× too fast). Smooth 60 fps belongs to the Enhanced repo.
+   defaults to N = 23 (~6.3 fps; chosen by play-testing, 2026-09-23 — 29 would run the race clock in
+   real time). N is configurable (`--frame-ticks`, launcher "Game speed"; 5 = original engine cap).
+   Smooth 60 fps belongs to the Enhanced repo.
+6. **Launcher**: a wxWidgets launcher like TD2 Enhanced's (`td3port/launcher`, `-DTD3_LAUNCHER=ON`):
+   game folder, car / course / skill (`--car`, `--course`, `--skill`), game speed, sound
+   (`--sound adlib|speaker`), window size, full screen.
 5. **OPL2 emulator**: Nuked-OPL3 (LGPL-2.1), compiled as a separate file with its licence shipped.
 
 ## TODO (parked)

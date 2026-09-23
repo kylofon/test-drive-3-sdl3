@@ -2,6 +2,7 @@
  * arithmetic), start-up / shut-down, configuration, memory, random, key poll and joystick keys,
  * player records. Segment 0000 / 01f4. */
 #include "game/game.h"
+#include "portcfg.h"
 
 /* 0000:0000 main — game_flow.md §4.1 / §4.1.1 (verified against 0000:0000-07e3) */
 static u32 flow_hundredths(u8 min, u8 sec, u8 frac)    /* inline in main: min*6000 + sec*100 + frac*10 */
@@ -299,6 +300,7 @@ void config_load(void)
     }
     /* PORT: audio 1-3 (Tandy, CMS, MT-32) are not ported and fall back to AdLib (4); 0 stays the PC speaker. */
     if (DSW(DS_snd_device_cfg) != 0) DSW(DS_snd_device_cfg) = 4;
+    portcfg_apply_config();                 /* PORT: --sound (launcher option), portcfg.c */
     if (DSW(DS_snd_device_cfg) == 3) {
         DSB(DS_sfx_off) = 1;
         DSW(DS_snd_device_cfg) = 0x81;

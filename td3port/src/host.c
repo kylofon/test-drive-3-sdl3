@@ -46,7 +46,7 @@ static int frame_ticks = HOST_DEFAULT_FRAME_TICKS;
 
 static void process_events(void);
 
-bool host_init(const char *dir, int window_scale)
+bool host_init(const char *dir, int window_scale, bool fullscreen)
 {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD)) {
         fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
@@ -60,6 +60,7 @@ bool host_init(const char *dir, int window_scale)
         return false;
     }
     SDL_SetRenderVSync(renderer, 1);
+    if (fullscreen) SDL_SetWindowFullscreen(window, true);
     host_set_frame_source(NULL, 320, 200);
 
     OPL3_Reset(&opl, AUDIO_RATE);

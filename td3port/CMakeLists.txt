@@ -33,3 +33,11 @@ if(WIN32)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:td3port> $<TARGET_FILE_DIR:td3port>
         COMMAND_EXPAND_LISTS)
 endif()
+
+# The launcher ("Test Drive III"): the game folder, the car, course and skill the game starts with, the
+# game speed, sound and display options; built beside td3port.exe. It needs wxWidgets 3.2
+# (MSYS2: mingw-w64-x86_64-wxwidgets3.2-msw) and a C++17 compiler.
+option(TD3_LAUNCHER "Also build the launcher, Test Drive III.exe (wxWidgets)" OFF)
+if(TD3_LAUNCHER)
+    add_subdirectory(launcher)
+endif()

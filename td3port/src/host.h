@@ -7,7 +7,7 @@
 #define PIT_HZ        1193182u
 #define PIT_DIV_GAME  0x2000u        /* 8192 -> 145.652 Hz, timer_install 0c1c:109f (platform.md 4.4.2) */
 
-bool host_init(const char *game_dir, int window_scale);
+bool host_init(const char *game_dir, int window_scale, bool fullscreen);
 void host_shutdown(void);
 
 /* Called once per 145.652 Hz tick from host_pump() (the port's replacement for INT 8). The platform
@@ -30,9 +30,10 @@ void host_pump(void);
 void host_wait_vretrace(void);
 
 /* Race frame pacing (PLAN.md decision 4). race_run waits until at least this many timer ticks have
- * passed since the frame started; the original constant is 5 (engine cap, ~29 fps, game ~5.8x too
- * fast); the port defaults to HOST_DEFAULT_FRAME_TICKS (~5 fps, the rate the game was tuned for). */
-#define HOST_DEFAULT_FRAME_TICKS 29
+ * passed since the frame started; the original constant is 5 (engine cap, ~29 fps: the game runs
+ * 5.8x faster than the race clock's design rate of 5 fps, 29 ticks); the port defaults to
+ * HOST_DEFAULT_FRAME_TICKS = 23 (~6.3 fps), chosen by play-testing as the speed that feels right. */
+#define HOST_DEFAULT_FRAME_TICKS 23
 void host_set_frame_ticks(int ticks);
 int  host_frame_ticks(void);
 

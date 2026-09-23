@@ -1,0 +1,21 @@
+#pragma once
+/* Port options from the command line (main.c) that act inside the game, applied at the places the
+ * game reads the corresponding setting, so the game behaves as if they were chosen in its own menus
+ * (and remembers them in PLAYDISK.DAT like its own choices). Coordinator-owned. */
+#include "types.h"
+
+typedef struct {
+    char car[8];        /* --car CODE: a car slot's base name, e.g. "CCNSX"; "" = PLAYDISK.DAT's choice */
+    char course[10];    /* --course CODE: a scene slot's base name, e.g. "SCENE02"; "" = PLAYDISK.DAT's */
+    int skill;          /* --skill 1..9 as shown in the game (1-3 automatic gearbox); 0 = PLAYDISK.DAT's */
+    int sound;          /* --sound adlib|speaker -> TD3.CFG audio 4 / 0; -1 = TD3.CFG's */
+} PortConfig;
+
+extern PortConfig portcfg;
+
+/* After TD3.CFG is read (config_load 0000:092a): overrides the audio device. */
+void portcfg_apply_config(void);
+
+/* After PLAYDISK.DAT is read (playdisk_load 01f4:28ae), before the car and scene .LST are loaded:
+ * selects the car and scene slots and the skill level. Unknown codes are ignored. */
+void portcfg_apply_playdisk(void);
