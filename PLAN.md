@@ -91,6 +91,12 @@ distance from the same geometry. That goes further than the TD1/TD2 overlays.
 2. **Sound**: AdLib/Sound Blaster through a bundled OPL2 emulator. MT-32, Tandy 3-voice,
    Game Blaster (CMS) → TODO.
 3. **Copy protection**: bypassed in the port with a `/* PORT: */` note, documented briefly.
+4. **Frame pacing**: design speed. The game advances physics, traffic and the race clock once per
+   frame (1 clock second = 5 frames), tuned for ~5 fps. The port keeps the original rule "wait until
+   ≥ N timer ticks (145.6 Hz) since the frame started", with DS:B70E = ticks actually elapsed, and
+   defaults to N ≈ 29 (~5 fps, real-time clock and speeds). N is configurable (5 = original engine
+   cap, ~5.8× too fast). Smooth 60 fps belongs to the Enhanced repo.
+5. **OPL2 emulator**: Nuked-OPL3 (LGPL-2.1), compiled as a separate file with its licence shipped.
 
 ## TODO (parked)
 
