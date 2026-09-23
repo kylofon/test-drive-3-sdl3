@@ -1,15 +1,15 @@
 """Rename Ghidra's DGROUP globals to DS offsets and build a globals cross-reference.
 
-Ghidra loads the image at segment 1000, so DGROUP 178F is segment 278F (the loader may split it into
-several blocks, e.g. 278F and 2793). Anything that lands inside DGROUP is renamed:
+Ghidra loads the image at segment 1000, so DGROUP 1BE4 is segment 2BE4 (the loader may split it into
+several blocks). Anything that lands inside DGROUP is renamed:
 
   iRam000278f8     -> i_DS0008     (linear 0x278F8 - DGROUP linear 0x278F0)
   LAB_2793_0010    -> DS_0050      (linear 0x27940)
   DAT_278f_0004    -> DS_0004
 Function names get their file segment back: FUN_16c9_1234 -> FUN_06c9_1234.
 
-usage: postprocess.py port/decomp/td2ega.c 178F
-       (writes td2ega_ds.c and td2ega_globals_xref.txt next to it)
+usage: postprocess.py port/decomp/tdiii.c 1BE4
+       (writes tdiii_ds.c and tdiii_globals_xref.txt next to it)
 """
 import os, re, sys
 from collections import defaultdict
@@ -36,8 +36,10 @@ def seg_label(m):
 
 
 text = re.sub(r'\b([a-zA-Z]*)Ram000([0-9a-f]{5})\b', ram, text)
-text = re.sub(r'\b(LAB|DAT)_([0-9a-f]{4})_([0-9a-f]{4})\b', seg_label, text)
-text = re.sub(r'\b(FUN|LAB|DAT|fn)_([0-9a-f]{4})_([0-9a-f]{4})\b',
+# `_DAT_3000_a3ec`: Ghidra prefixes word-sized overlapping globals with '_'; DGROUP may continue in
+# a second block (here 3000:xxxx for DS:C1C0 and up).
+text = re.sub(r'(?<![A-Za-z0-9])_*(LAB|DAT)_([0-9a-f]{4})_([0-9a-f]{4})\b', seg_label, text)
+text = re.sub(r'(?<![A-Za-z0-9])(FUN|LAB|DAT|fn)_([0-9a-f]{4})_([0-9a-f]{4})\b',
               lambda m: '%s_%04x_%s' % (m.group(1), int(m.group(2), 16) - LOAD_SEG, m.group(3))
               if int(m.group(2), 16) >= LOAD_SEG else m.group(0), text)
 

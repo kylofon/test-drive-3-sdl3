@@ -1,6 +1,6 @@
 // Headless pre-script: before auto-analysis, tell Ghidra that DS = DGROUP in all code below DGROUP,
 // so data references are resolved against the right segment.
-// args: <dgroup segment hex, e.g. 178F>
+// args: <dgroup segment hex, e.g. 1BE4>
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.lang.Register;

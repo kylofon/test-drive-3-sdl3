@@ -36,7 +36,7 @@ Sound: Tandy 3-voice, Game Blaster (CMS), MT-32/LAPC-1, AdLib/SB.
 - Tools carried over: `unexepack.py`, `x86dis.py`, Ghidra scripts
   (`ApplySymbols`, `DecompileAll`, `SetDS`, `postprocess.py`).
 
-### 1. Executable map
+### 1. Executable map — done (2026-09-23, see `port/RE_GUIDE.md`)
 - Unpack to `work/`, build the segment/function list (`tools/td3index.py`,
   adapted from `td2index.py`): far-call targets, segment bases, DGROUP, entry.
 - Identify and label the MSC 5.1 RTL so it drops out of scope early.
@@ -85,9 +85,17 @@ Release the faithful port like TD2 (v0.1.0 zip). Then a new
 likely render at native resolution / widescreen / 60 fps with longer draw
 distance from the same geometry. That goes further than the TD1/TD2 overlays.
 
-## Decisions needed
+## Decisions (2026-09-23)
 
-1. **Graphics target**: VGA 256-colour only; EGA and Tandy parked (as TD2 Tandy)? *(recommended)*
-2. **Sound**: AdLib/SB through a bundled OPL2 emulator (e.g. Nuked-OPL3, LGPL,
-   or ymfm, BSD); MT-32, Tandy and CMS dropped? *(recommended)*
-3. **Copy protection**: if TD3 has a manual/code check, bypass it with a `/* PORT: */` note. *(to confirm once found)*
+1. **Graphics**: VGA 320×200×256 first. EGA and Tandy → TODO.
+2. **Sound**: AdLib/Sound Blaster through a bundled OPL2 emulator. MT-32, Tandy 3-voice,
+   Game Blaster (CMS) → TODO.
+3. **Copy protection**: bypassed in the port with a `/* PORT: */` note, documented briefly.
+
+## TODO (parked)
+
+- [ ] EGA 16-colour build
+- [ ] Tandy 16-colour build
+- [ ] MT-32 / LAPC-1 music
+- [ ] Tandy 3-voice sound
+- [ ] Game Blaster (CMS) sound

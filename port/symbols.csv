@@ -1,0 +1,57 @@
+kind,address,name,type,owner,other_names,notes
+func,0000:0000,main,void(void),seed,,"game state machine on DS:0086 (1 title, 2 protection check, 4 menus, 5 race legs, 3/6 results)"
+func,01f4:1ec2,copy_protection_check,far,seed,,"returns 0 = passed; check patched out with NOPs in this copy, dead code follows (01f4:1ed7-01f4:262a)"
+func,0792:000c,race_run,far,seed,,"race runner: loads the stage, per-frame loop, returns when DS:008A = 3"
+func,0792:0414,race_input,far void(int phase),seed,,key handling between frame phases 0/1/2
+func,0c1c:0e98,kbd_isr,interrupt,seed,,"INT 9 handler: reads port 60h, acks 61h"
+func,0c1c:109f,timer_install,far,seed,,"PIT ch0 divisor 2000h (145.6 Hz), hooks INT 8"
+func,0c1c:10cf,timer_restore,far,seed,,PIT back to 18.2 Hz
+func,0e12:0080,key_dispatch,far,seed,,"dispatch key code DS:E08C: 40h..7Fh via CS:0000 table, 81h..8Ah via DS:B6EF"
+func,0e12:76ec,frame_update,far,seed,,"per-frame world/car update (calls 0977:0008, 0ab4:1220) and first draw pass"
+func,0e12:77d5,frame_draw,far,seed,,second draw pass / overlays
+func,1905:000b,gfx_set_mode,int(int mode),seed,,"mode 00..14h, <0 = current BIOS mode; stores mode*2 in DS:BD44 (dispatch index) and mode in DS:BD49. 13h = BIOS mode 13h, 14h = unchained 320x200x256 (game VGA mode), 0Dh/0Eh EGA, 08h-0Ah Tandy, 0Bh/0Ch Hercules"
+func,1940:0018,_astart,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:03f8, score 0.99)"
+func,1940:00de,_cinit,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:04be, score 0.84)"
+func,1940:01a2,exit,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:0582, score 1.00)"
+func,1940:01b9,_exit,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:0599, score 0.71)"
+func,1940:0200,_ctermsub,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:05e0, score 1.00)"
+func,1940:022d,_initterm,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:060d, score 1.00)"
+func,1940:0240,fclose,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:0978, score 0.80)"
+func,1940:0746,strcpy,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:2956, score 1.00)"
+func,1940:0778,strcmp,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:2988, score 1.00)"
+func,1940:07a4,strlen,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:29b4, score 1.00)"
+func,1940:0998,_aFlmul,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:2ee8, score 1.00)"
+func,1940:0ae2,_FF_MSGBANNER,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:0620, score 1.00)"
+func,1940:0b0c,_nullcheck,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:066e, score 1.00)"
+func,1940:0b32,_NMSG_TEXT,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:088c, score 1.00)"
+func,1940:0b5d,_NMSG_WRITE,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:08b7, score 1.00)"
+func,1940:0da8,_freebuf,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:0df0, score 1.00)"
+func,1940:0dd8,_openfile,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:0e20, score 0.68)"
+func,1940:0ed2,fflush,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:105c, score 0.67)"
+func,1940:0f42,_getstream,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:219a, score 0.61)"
+func,1940:0f7c,close,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:223e, score 0.75)"
+func,1940:0f9c,read,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:247c, score 0.58)"
+func,1940:107a,write,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:2558, score 0.83)"
+func,1940:11a4,free,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:2696, score 1.00)"
+func,1940:11b6,malloc,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:26a8, score 1.00)"
+func,1940:1360,_brkctl,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:2852, score 1.00)"
+func,1940:1424,strcat,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:2916, score 1.00)"
+func,1940:1464,itoa,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:29d0, score 1.00)"
+func,1940:153c,_dosmaperr,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:094a, score 1.00)"
+func,1940:15d8,lseek,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:225e, score 0.95)"
+func,1940:1652,open,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:22d8, score 0.96)"
+func,1940:17f6,stackavail,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:2682, score 1.00)"
+func,1940:180a,memset,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:2b82, score 0.70)"
+func,1940:18b2,flushall,far,seed,,"MSC 5.1 RTL (matches TD2 13a8:0a3a, score 0.76)"
+func,1ace:02a5,snd_select_device,near,seed,,BX = sound device (TD3.CFG): copies routine pointers from DS:C92E.. into DS:C906..C918
+global,DS:0086,game_state,u8,seed,,main state machine
+global,DS:0088,protection_ok,u8,seed,,1 = copy protection passed (full game); 0 = back to menus after one run
+global,DS:008A,race_state,u8,seed,,3 = leave race
+global,DS:00A0,timer_ticks,u16,seed,,145.6 Hz tick counter (likely); race frame loop waits for >= 5 ticks
+global,DS:B6EF,key_ext_handlers,near ptr[10],seed,,handlers for key codes 81h..8Ah
+global,DS:BD44,gfx_mode_x2,u16,seed,,current graphics mode * 2 (index into per-mode jump tables)
+global,DS:BD49,gfx_mode,u8,seed,,current graphics mode
+global,DS:C906,snd_dev_routines,near ptr[8],seed,,current sound device routines
+global,DS:C92E,snd_dev_tables,near ptr[5][5],seed,,per-device routine tables (5 devices)
+global,DS:C975,snd_midi_handlers,near ptr[8],seed,,MIDI status 8x..Fx handlers
+global,DS:E08C,key_code,u8,seed,,pending key code for key_dispatch

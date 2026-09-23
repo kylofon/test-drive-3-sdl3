@@ -1,6 +1,6 @@
 // Headless post-script: pins DS to DGROUP, creates functions at the indexed image offsets,
 // and writes every decompiled function to one C file.
-// args: <starts.txt (hex image offsets) or -> <out.c> <dgroup segment hex, e.g. 178F> [timeout_s] [only_starts]
+// args: <starts.txt (hex image offsets) or -> <out.c> <dgroup segment hex, e.g. 1BE4> [timeout_s] [only_starts]
 // With "-" as starts, only the functions Ghidra found itself are decompiled.
 // With only_starts = "only", just the functions whose entry is listed in starts.txt are decompiled
 // (other functions, e.g. names applied inside hand-written asm, stay named but are skipped).

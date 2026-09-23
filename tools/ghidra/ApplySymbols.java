@@ -1,5 +1,5 @@
 // Headless post-script: applies merged port symbols to the Ghidra program.
-// args: <symbols_ghidra.txt> <dgroup segment hex, e.g. 178F>
+// args: <symbols_ghidra.txt> <dgroup segment hex, e.g. 1BE4>
 // Lines: "func 16C9:403B name" (Ghidra address) or "global DS:18C5 name" / "global 16C9:7DDC name".
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
