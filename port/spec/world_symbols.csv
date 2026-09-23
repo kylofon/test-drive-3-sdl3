@@ -1,0 +1,74 @@
+kind,address,name,type,notes
+func,0792:0d2e,stage_load,far void(void),loads leg sprite .DAT (DS:2500) T.BIN O.BIN P.BIN car POBs; calls 0792:0fce 0e12:2789 0e12:255e
+func,0792:0fce,leg_map_load,far void(void),loads <scene><'A'+leg>.DAT to DS:9592; EGA dither table B4B9; 95C7=0 darkening
+func,01f4:53c4,shared_scene_load,far int(void),once: SCENETTT/SCENETTO/SCENETTP.BIN SCENETTA.DAT SCENETT1.DAT + menu pictures
+func,0e12:2789,sprites_prescale,far void(void),remap sprite pixels (non-VGA) and build scaled copies in far DS:E53C; message 1Ah on overflow
+func,0e12:276e,sprite_pixels_remap,near,bytes >=10h via remap table (skipped in mode 13h)
+func,0e12:2810,sprite_prescale_one,near,per sprite; DS:95E1 kind &7
+func,0e12:289a,sprite_scale_setup,near,reads sprite record (w h rowptr rowlen)
+func,0e12:2d54,sprite_scale_rows,near,
+func,0e12:2f84,sprite_scale_row,near,row centred in width
+func,0e12:255e,leg_state_reset,far void(void),random seed BA56; player pos 949A/949C = 9CF3/9F73[0]
+func,0e12:261c,colour_code_map_build,far void(void),DS:E5B0[32] from 95C7 / BC75 / BC77
+func,0e12:70cd,world_cells_collect,near void(void),car cell -> visible cells (CS:7068/7004 tables) -> 72f8 per cell and per static object; sets route index DS:0A74
+func,0e12:72f8,model_place,near,AL=type AH=0 tile (E7E0 <40h / E770) AH=1 O.BIN; vertices faces and sprite children
+func,0e12:75c1,model_vertices,near,Y X Z arrays + BD2E / BD30 / BD32
+func,0e12:7653,vertex_rotate,near,quarter turns + sin/cos by 946A
+func,0e12:7487,model_faces,near,face list + colour pair (B4B9/B6B9)
+func,0e12:5466,vehicle_follow_lane,near,P.BIN waypoints per cell; branches; cell change at lane exits
+func,0e12:5aa4,lane_list_for_cell,near,SI=cell index -> P.BIN list; 946A rotation; 946D count
+func,0e12:33f7,sprite_collisions,near,sprite collision classes (id hi & E0h)
+func,0e12:3352,sprite_animate,near,drift (95B7/95B9) and animation chain DS:9611
+func,0e12:3a7c,face_under_car,near,surface type (w3>>11) -> DS:BA9B at 3d28
+func,0e12:47fc,windscreen_splat,near,class 80h sprites
+func,0e12:5df9,lighthouse_rotate,near,object model 0Fh; speed 95D5
+func,0e12:5e70,crossing_gate_update,near,object model 10h vs train models 12h-14h; speed 95D6
+global,DS:2500,sprite_set,u8[],<scene><d>.DAT sprite bitmaps; header words 2502/2504/2506
+global,DS:9592,leg_file,u8[8504],<scene>A..E.DAT memory image up to DS:B6C9
+global,DS:9597,opp_scripts,u8[2][10],opponent branch/behaviour scripts
+global,DS:95AF,traffic_speeds,u16[4],
+global,DS:95B7,sprite_drift_x,s16,
+global,DS:95B9,sprite_drift_z,s16,
+global,DS:95BB,leg_ref_time,u16,seconds; caps scoring time
+global,DS:95BF,sprite_scale_count,u8,
+global,DS:95C0,sky_colours,u8[4],
+global,DS:95C7,colour_mode,u8,0 = darker (8->0 7->8)
+global,DS:95C8,sky_alt,u8,
+global,DS:95C9,route_tiles,u8[3],tile types identifying routes 0..2 -> DS:0A74
+global,DS:95CC,traffic_turn_delay,u8,
+global,DS:95D3,bridge_clearance,u16,surface types 14h-17h
+global,DS:95D5,lighthouse_speed,u8,
+global,DS:95D6,gate_speed,u8,
+global,DS:95E1,sprite_kind,u8[32],
+global,DS:9611,sprite_anim_next,u16[48],next id | delay<<8
+global,DS:9671,leg_map,u16[512],32x16 cells: type | height<<8 | rot<<14; row 0 = north
+global,DS:9A71,sprite_count,u16,
+global,DS:9A73,sprite_id,u16[320],
+global,DS:9CF3,sprite_x,s16[320],[0] = player start X
+global,DS:9F73,sprite_z,s16[320],
+global,DS:A1F3,sprite_y,s16[320],
+global,DS:A473,obj_count,u16,
+global,DS:A475,obj_a475,u16,moving-object scan limit (Likely)
+global,DS:A477,obj_first_static,u16,
+global,DS:A479,obj_flags,u16[160],model | speed class<<6 | behaviour<<8 | flags
+global,DS:A5B9,obj_x,s16[160],
+global,DS:A6F9,obj_z,s16[160],
+global,DS:A839,obj_y8,u16[160],height*8
+global,DS:A979,obj_heading,u16[160],hi current lo target
+global,DS:AAB9,obj_pitch,u16[160],hi -> BD38
+global,DS:AD39,obj_cell,u16[160],runtime cell pointer
+global,DS:AE79,obj_waypoint,u16[160],runtime waypoint index / timer
+global,DS:B4B9,colour_pairs,u16[256],
+global,DS:B6B9,colour_direct,u8[16],
+global,DS:0A74,route_index,u8,0..2 current alternative route
+global,DS:BA9B,surface_under_car,u8,w3>>11 of face under the car; 1Fh = leg finish
+global,DS:BD2A,place_x,u16,cell/object centre X
+global,DS:BD2C,place_z,u16,
+global,DS:BD2E,place_y,u16,
+global,DS:946A,place_rot,u8,heading; bits 6-7 quarter turn
+global,DS:BD24,model_face_cut,u16,alias table entry
+global,DS:E770,tiles_scene,far ptr,<scene>T.BIN
+global,DS:E7E0,tiles_shared,far ptr,SCENETTT.BIN
+global,DS:E54C,objects_set,far ptr,O.BIN
+global,DS:CE9E,lanes_set,far ptr,P.BIN
+global,DS:E53C,sprite_cache,far ptr,prescaled sprites D010h bytes

@@ -36,14 +36,10 @@ func,1905:000b,gfx_set_mode,int(int mode),"mode 00..14h, <0 = current BIOS mode;
 func,01f4:1ec2,copy_protection_check,far,"returns 0 = passed; check patched out with NOPs in this copy, dead code follows (01f4:1ed7-01f4:262a)"
 func,0c1c:0e98,kbd_isr,interrupt,"INT 9 handler: reads port 60h, acks 61h"
 func,0e12:0080,key_dispatch,far,"dispatch key code DS:E08C: 40h..7Fh via CS:0000 table, 81h..8Ah via DS:B6EF"
-func,1ace:02a5,snd_select_device,near,BX = sound device (TD3.CFG): copies routine pointers from DS:C92E.. into DS:C906..C918
 global,DS:BD44,gfx_mode_x2,u16,current graphics mode * 2 (index into per-mode jump tables)
 global,DS:BD49,gfx_mode,u8,current graphics mode
 global,DS:E08C,key_code,u8,pending key code for key_dispatch
 global,DS:B6EF,key_ext_handlers,near ptr[10],handlers for key codes 81h..8Ah
-global,DS:C906,snd_dev_routines,near ptr[8],current sound device routines
-global,DS:C92E,snd_dev_tables,near ptr[5][5],per-device routine tables (5 devices)
-global,DS:C975,snd_midi_handlers,near ptr[8],MIDI status 8x..Fx handlers
 func,0000:0000,main,void(void),"game state machine on DS:0086 (1 title, 2 protection check, 4 menus, 5 race legs, 3/6 results)"
 func,0792:000c,race_run,far,"race runner: loads the stage, per-frame loop, returns when DS:008A = 3"
 func,0792:0414,race_input,far void(int phase),key handling between frame phases 0/1/2

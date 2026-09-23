@@ -13,8 +13,8 @@ carry over from TD1/TD2 apart from the tooling and the port skeleton.
 | File | Size | Notes |
 |---|---|---|
 | `TDIII.EXE` | 125 251 | EXEPACK; `tools/unexepack.py` → 166 544-byte MZ, entry 1940:0018, 1391 relocs. "MS Run-Time Library (c) 1988" → MSC 5.1 |
-| `SETUP.EXE` | 5 245 | writes `TD3.CFG` (graphics, sound, joystick) |
-| `TD3.CFG` | 6 | byte 2 = sound device (1 Tandy, 2 CMS, 3 MT-32, 4 AdLib/SB); byte 4 = MT-32 flag? |
+| `SETUP.EXE` | 5 245 | writes `TD3.CFG` (graphics, sound, MIDI flag; no joystick setting) |
+| `TD3.CFG` | 6 | 3 words: video (0 VGA, 1 EGA, 2 Tandy), audio (0 PC speaker, 1 Tandy, 2 CMS, 3 MT-32, 4 AdLib/SB), MIDI flag |
 | `DATAA.DAT`, `DATAB.DAT` | 125 K / 249 K | named `.LZ` images inside (TITLE1, SELECT, KEYS, COPSEQ, CREDIT*, TOPSCOR*, DIFFLEV*, WATER/WATEREGA, BROKE/BROKEGA …) |
 | `DATAC.DAT` | 1.8 K | starts with 6-bit palette-looking bytes |
 | `INSTR.DAT` | 1.9 K | AdLib instrument bank ("Ad-lib Sound Board") |
@@ -46,7 +46,7 @@ Sound: Tandy 3-voice, Game Blaster (CMS), MT-32/LAPC-1, AdLib/SB.
 - Output: `port/RE_GUIDE.md` (addresses as SSSS:OOOO, Ghidra = +1000),
   `port/symbols.csv` seeded with RTL + obvious names.
 
-### 2. File formats → `FORMATS.md` + `tools/td3*.py`
+### 2. File formats — done (2026-09-23, see `FORMATS.md` + `port/formats/`)
 Each format gets a decoder that dumps to `work/` plus an image/contact sheet so
 it can be checked visually:
 1. `DATAx.DAT` archive directory + `.LZ` decompressor → all screens as PNG.
