@@ -41,6 +41,8 @@ int  host_frame_ticks(void);
  * keys E0 sc / E0 sc|80h, Pause E1 1D 45 E1 9D C5, Print Screen E0 2A E0 37 / E0 B7 E0 AA. Key repeats
  * feed the make code again. */
 void host_set_kbd_handler(void (*handler)(u8 byte));
+/* Called when the window loses keyboard focus (keys released outside it never send their break). */
+void host_set_focus_lost_handler(void (*handler)(void));
 
 /* ---- Mouse (INT 33h replacement): position in 320x200 screen pixels, buttons bit0 left, bit1 right.
  * Motion in mickeys since the last call (for the driver's relative reads). */

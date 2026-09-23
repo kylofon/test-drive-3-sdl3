@@ -93,8 +93,8 @@ Detailed format documents (field tables, reading code, open questions):
   `FF`. `0000:0d62` reads 336 bytes to colour **16 + DS:90F0** of the palette buffer `DS:0B6A`
   (256 × RGB): colours 16–127, or 144–255 for the second set (car graphics are drawn at +80h into the
   car's palette). Colours 0–15 come from the executable's initial buffer.
-* `<car>SIC.BIN` = 97 bytes: 32 colours + `FF`, read by `0000:0df6` to colour 48 + `DS:90F0`.
-  The `.SIC` icon still renders with slightly wrong colours: exact palette combination open.
+* `<car>SIC.BIN` = 97 bytes: 32 colours + `FF`, read by `0000:0df6` to `DS:0C2A` = colour **64** +
+  `DS:90F0` (game_flow port; the icon now renders correctly).
 * Fades scale the buffer (`(c * level + 8) >> 4`).
 
 ## Summary of the rest (details in port/formats/)
@@ -121,7 +121,6 @@ Detailed format documents (field tables, reading code, open questions):
 
 ## Still open
 
-* Exact palette combination of the car `.SIC` icon.
 * Leg header bytes, some surface and face types, the zero-face tile 67h in SCENE02, traffic
   behaviour details (world.md / objects.md).
 * Physical units of some physics fields (descriptions.md).

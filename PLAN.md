@@ -75,7 +75,7 @@ mouse, gamepad, OPL2 via Nuked-OPL3 + speaker, `--frame-ticks` pacing, `TD3_SNAP
 generated `symbols.h`, `PORTING.md`. A placeholder `game_main` (test pattern, Esc quits) proves the
 pipeline headless.
 
-### 5. Port, subsystem by subsystem
+### 5. Port, subsystem by subsystem — first integration running (2026-09-23)
 Order: platform/video → screens (title, menus: a visible milestone) → scene
 loading + 3D renderer (static camera) → driving/physics → traffic/cops →
 full game flow → sound. Each step verified against DOSBox captures of the

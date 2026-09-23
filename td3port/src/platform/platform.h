@@ -159,6 +159,25 @@ void gfx_set_ega_palette(u16 pal16_ds);
 /* 1905:000b gfx_set_mode â€” platform.md Â§4.2.1 (13h: parameter block, pages A000h, clears page 0 + DAC; other modes: PORT no-op) */
 void gfx_set_mode(s16 mode);
 
+/* ---- Added by the platform module (additional original functions; no existing prototype changed) ---- */
+/* 0ab4:006a lzw_decode_body — platform.md §4.5 (decoder without the reset; the original enters it only by
+ * falling through from lzw_decode) */
+void lzw_decode_body(FarPtr src, FarPtr dst);
+/* 0c1c:071c far_normalize — platform.md §2.3 (returns DX:AX = (seg + off/16) << 16; no callers) */
+u32 far_normalize(u16 off, u16 seg);
+/* 0c1c:0e98 kbd_isr — platform.md §4.4.1 (INT 9 body for one port 60h byte; the host feeds it through
+ * platform_init's keyboard handler while INT 9 is hooked) */
+void kbd_isr(u8 sc);
+/* 0c1c:10e8 timer_isr — platform.md §4.4.2 (INT 8 body: snd_tick, DS:00A0++, BIOS clock every 8th tick;
+ * run by platform_init's tick handler while INT 8 is hooked) */
+void timer_isr(void);
+/* 17be:0009 gfx_copy_rect_to_copy_page — platform.md §4.2.5 (draw page BD88 -> copy page BD86; no callers) */
+void gfx_copy_rect_to_copy_page(s16 x0, s16 x1, s16 y0, s16 y1);
+/* 192e:0005 gfx_fill_rect_clipped — platform.md §4.2.4 (clips to BD53..BD51 x BD57..BD55, then gfx_fill_rect) */
+void gfx_fill_rect_clipped(s16 x0, s16 x1, s16 y0, s16 y1);
+/* 1937:0003 gfx_clear_page — platform.md §4.2.4 (13h: zero-fills C1AC bytes of the draw page) */
+void gfx_clear_page(void);
+
 /* ---- PORT: DOS services (no original address) ------------------------------------------------------
  * INT 21h replacements for game code that calls DOS directly (sound's instr_load 1ace:02fa and its
  * dos_free 1bd7:000c, which is sound's own function and calls dos21_free; the platform's own lzw_alloc /

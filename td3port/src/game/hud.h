@@ -35,3 +35,23 @@ void broken_glass_overlay(void);
 void cockpit_pictures_draw(s16 bottom_y);
 /* 0e12:0b1d race_clock_hud — hud.md §4.9 (near; from frame_update: race clock tick, clock / compass / radar draws) */
 void race_clock_hud(void);
+
+/* ---- Added by the hud module (internal to hud*.c; declared here so the hud files can call each other) */
+/* 0792:0cec view_first_frame — hud.md §4.3 (frame_update + frame_draw + view_present unless chase view) */
+void view_first_frame(void);
+/* 0792:1156 shift_lever_draw — hud.md §4.8 (save screen, compose gate + knob at DS:CE94, copy to screen) */
+void shift_lever_draw(void);
+/* 0792:1488 wheel_rim_blit — hud.md §4.4 (rim picture from page 1 + lower gauge backings; far void(int dy, int dx)) */
+void wheel_rim_blit(s16 dy, s16 dx);
+/* 0792:155e steer_marker_draw — hud.md §4.4 (8x5 marker glyph at the wheel angle, current page) */
+void steer_marker_draw(void);
+/* 0792:18da speedo_draw — hud.md §4.5 (speedometer needle, page 0) */
+void speedo_draw(void);
+/* 0792:1dfe load_opponent_pob_nonvga — hud.md §2.1 (non-VGA only; no-op in mode 13h) */
+void load_opponent_pob_nonvga(void);
+/* 0e12:0b85 clock_draw — hud.md §4.9 (near; race clock m:ss when the second changed) */
+void clock_draw(void);
+/* 0e12:0cbe compass_draw — hud.md §4.9 (near; compass window or debug frame-time digits) */
+void compass_draw(void);
+/* 0e12:0db4 radar_detector — hud.md §4.9 (near; radar_draw: bars, blink, blip sfx 0Eh) */
+void radar_detector(void);

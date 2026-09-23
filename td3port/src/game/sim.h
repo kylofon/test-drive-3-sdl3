@@ -44,3 +44,21 @@ void police_update(void);
 void opponent_times_finalize(void);
 /* 0e12:6e92 camera_pos_update — simulation.md §4.1/§4.11, render3d.md §4.12 (near; camera X/Z, probe point DS:94A1/94A3, sun sprite) */
 void camera_pos_update(void);
+
+/* ---- Simulation-internal functions shared between the sim*.c files (not called by other modules) ---- */
+/* 0e12:0e74 overrev_damage — simulation.md §4.8 (far; every 4th over-rev event: engine or gear damage) */
+void overrev_damage(void);
+/* 0e12:0ec5 landing_damage — simulation.md §4.8 (far; 1/32 gear damage, else falls into random_damage) */
+void landing_damage(void);
+/* 0e12:0edb random_damage — simulation.md §4.8 (far; suspension/brakes 1/8, alignment 1/64) */
+void random_damage(void);
+/* 0e12:23b1 grip_yaw_limit — simulation.md §4.3 (far; max course change per frame) */
+u16 grip_yaw_limit(u16 g);
+/* 0e12:6686 pitch_shear — simulation.md §4.3 (far; pitch -> model shear code, AL) */
+u8 pitch_shear(u16 p);
+/* 0e12:61d2 police_pursuit_clear — simulation.md §4.13 (near; pull-over count 0, clear 4040h of all police) */
+void police_pursuit_clear(void);
+/* 0e12:04f1 panel_erase — simulation.md §4.10 (far; DX: replay panel erase before a message) */
+void panel_erase(u16 dx);
+/* 0e12:01c5 gear_lever_target — simulation.md §4.5 (far; DS:E5B6 = 0, DS:CC57 = DS:E565[gear]) */
+void gear_lever_target(void);

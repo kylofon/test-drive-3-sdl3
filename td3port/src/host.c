@@ -20,6 +20,7 @@ static char *game_dir;
 
 static void (*tick_handler)(void);
 static void (*kbd_handler)(u8);
+static void (*focus_lost_handler)(void);
 static bool (*frame_source)(u32 *);
 static u32 frame[HOST_FRAME_MAX_W * HOST_FRAME_MAX_H];
 static int frame_w = 320, frame_h = 200;
@@ -90,6 +91,7 @@ void host_shutdown(void)
 
 void host_set_tick_handler(void (*handler)(void)) { tick_handler = handler; }
 void host_set_kbd_handler(void (*handler)(u8)) { kbd_handler = handler; }
+void host_set_focus_lost_handler(void (*handler)(void)) { focus_lost_handler = handler; }
 
 void host_set_frame_source(bool (*compose)(u32 *), int w, int h)
 {
@@ -379,6 +381,9 @@ static void process_events(void)
             break;
         case SDL_EVENT_KEY_UP:
             key_event(ev.key.scancode, false);
+            break;
+        case SDL_EVENT_WINDOW_FOCUS_LOST:
+            if (focus_lost_handler) focus_lost_handler();
             break;
         case SDL_EVENT_MOUSE_MOTION:
             mouse_dx += ev.motion.xrel;             /* mickeys: window pixels, as the driver's default */

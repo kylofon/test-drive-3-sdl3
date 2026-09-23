@@ -40,7 +40,7 @@ def base_palette():
 
 def load_palette(path):
     """path: palette file, or 'A+B' = A at colour 16 and B at colour 144 (DS:90F0 = 80h);
-    'F@48' loads F at colour 48 (the 32-colour *SIC.BIN, 0000:0df6)."""
+    'F@64' loads F at colour 64 (the 32-colour *SIC.BIN, 0000:0df6 -> DS:0C2A = colour 64 of DS:0B6A)."""
     pal = base_palette()
     d0 = os.path.dirname(path)
     for k, name in enumerate(os.path.basename(path).split('+')):
@@ -63,7 +63,7 @@ def palette_for(path):
     car = os.path.basename(d)
     if car.startswith('C') and car in td3res.CARS:        # drawn at +80h into the car's palette
         return os.path.join(d, car + {'.ICN': 'SC.BIN', '.BIC': 'SC.BIN', '.SID': 'SC.BIN',
-                                      '.SIC': 'SIC.BIN@48'}.get(os.path.splitext(name)[1], 'COL.BIN'))
+                                      '.SIC': 'SIC.BIN@64'}.get(os.path.splitext(name)[1], 'COL.BIN'))
     for prefix, pal in PALETTES:
         if stem.startswith(prefix):
             return os.path.normpath(os.path.join(d, pal))
