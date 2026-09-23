@@ -10,7 +10,7 @@ The original game files are not included. Put them in `Game/`.
 - `Game/` original data (not in git)
 - `tools/` Python reverse-engineering tools; `tools/ghidra/` Ghidra scripts
 - `port/` RE guide, symbols, subsystem specs (`port/spec/`)
-- `td3port/` the SDL3 port (later)
+- `td3port/` the SDL3 port (skeleton; see `td3port/PORTING.md`)
 - `_tools` junction to the shared Ghidra/JDK install (not in git)
 
 ## License

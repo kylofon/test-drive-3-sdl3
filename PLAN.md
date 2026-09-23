@@ -67,10 +67,13 @@ Split as in TD2, adjusted for the new engine:
 - `game_flow` — title, car/scene/difficulty select, race, checkpoints, replay/crash sequences, high scores
 - `sound` — AdLib music + effects (driver + INSTR.DAT)
 
-### 4. `td3port/` skeleton
-CMake + SDL3 copied from `td2port` (host, `mem.h` memory model, timer,
-input, snapshot/`TD3_KEYS` automation, generated `symbols.h`). Loads the original
-`Game/` files at runtime; `PORTING.md` with the same rules (`/* PORT: */` marks).
+### 4. `td3port/` skeleton — done (2026-09-23)
+CMake + SDL3, adapted from `td2port`: EXE loader (EXEPACK in C), `mem.h` memory model with VGA
+page 0 in `mem[]`, host (145.652 Hz tick, 70 Hz retrace wait, XT byte stream with E0/E1 prefixes,
+mouse, gamepad, OPL2 via Nuked-OPL3 + speaker, `--frame-ticks` pacing, `TD3_SNAPSHOT_DIR` /
+`TD3_KEYS` developer aids), mode 13h VGA model (DAC, CRTC start, compose), near/far code pointers,
+generated `symbols.h`, `PORTING.md`. A placeholder `game_main` (test pattern, Esc quits) proves the
+pipeline headless.
 
 ### 5. Port, subsystem by subsystem
 Order: platform/video → screens (title, menus: a visible milestone) → scene
